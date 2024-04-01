@@ -64,8 +64,8 @@ int main()
     case 2:
     {
         // Creating two player objects
-        Player player("Player I");
-        Player player2("Player 2");
+        Player player("X");
+        Player player2("O");
         // iterate until a winner or draw is reached
         while (flag)
         {

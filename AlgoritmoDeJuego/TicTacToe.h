@@ -22,9 +22,6 @@ void MoveServo(float Ang);
 #define ModoMedio 1
 #define ModoDificil 2
 
-//int _row, _col, _pos;
-
-//int _dificultad = 0;
 
 
 class Player
