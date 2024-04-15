@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../test"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"main_2": "c",
+			"arduino.h": "c"
+		}
+	}
+}
