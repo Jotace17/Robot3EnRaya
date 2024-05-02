@@ -3,7 +3,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 
-//  MAC Address
+//  MAC Address ESP Mater
 uint8_t broadcastAddress[] = {0x68, 0xB6, 0xB3, 0x3D, 0x6F, 0xF8};
 
 
