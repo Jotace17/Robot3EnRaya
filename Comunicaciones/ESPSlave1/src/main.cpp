@@ -45,7 +45,7 @@ void setup() {
     return;
   }
   
-  // Once ESPNow is successfully Init, we will register for recv CB to
+  // Once ESPNow is successfully Init, we will register to
   // get recv packer info
   esp_now_register_recv_cb(OnDataRecv);
 }
