@@ -1,9 +1,10 @@
+//Code Slave for comunication between 2 esp32(Group 2)
 #include <Arduino.h>
 
 #include <esp_now.h>
 #include <WiFi.h>
 
-// Structure example to receive data
+
 // Must match the sender structure
 typedef struct struct_message {
     char a[32];
