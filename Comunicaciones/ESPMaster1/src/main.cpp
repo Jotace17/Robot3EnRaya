@@ -1,3 +1,4 @@
+//Master to comunication between two esp32(group 2)
 #include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
@@ -5,7 +6,7 @@
 //  MAC Address
 uint8_t broadcastAddress[] = {0x68, 0xB6, 0xB3, 0x3D, 0x6F, 0xF8};
 
-// Structure example to send data
+
 // Must match the receiver structure
 typedef struct struct_message {
   char a[32];
