@@ -67,7 +67,7 @@ void Game::PlayerTurn(Player& player)
     {
         // mark the position as X if it was player 1 
         // mark the position as Y if it was player 2
-        player.PlayerName().compare("X") == 0 ? gameboard[row - 1][col] = 'X' : gameboard[row - 1][col] = 'O';
+        player.PlayerName().compare("Player X") == 0 ? gameboard[row - 1][col] = 'X' : gameboard[row - 1][col] = 'O';
         std::cout << " Marked at position: " << position << std::endl;
         // increment count
         count++;
