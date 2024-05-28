@@ -7,13 +7,21 @@
 
 // definition of pins
 #define PIN_M1_EN 7
-#define PIN_M1_IN1 6
-#define PIN_M1_IN2 14
+#define PIN_M1_IN1 15
+#define PIN_M1_IN2 16
+
+#define PIN_M2_EN 5
+#define PIN_M2_IN1 6
+#define PIN_M2_IN2 14
+
+//#define PIN_M3_EN 17
+//#define PIN_M3_IN1 18
+//#define PIN_M3_IN2 8
 
 // definition of pins encoder
-#define PIN_CS_M1 10 // (chip select for encoder of motor 1) 10 for SPI3
+#define PIN_CS_M1 42//10 // (chip select for encoder of motor 1) 10 for SPI3
 #define PIN_CS_M2 40 // (chip select for encoder of motor 2)
-#define PIN_CS_M3 41 // (chip select for encoder of motor 3)
+#define PIN_CS_M3 10//41 // (chip select for encoder of motor 3)
 // common pins for all encoders
 #define PIN_SCLK 12 // 36 // 12 for SPI3
 #define PIN_MISO 13 // 37 // 13 for SPI3
@@ -54,7 +62,7 @@ void setup()
 
   _enc = new AlMar::Esp32::EncoderATM203_Spi2(cs_pins, N_MOTORS, PIN_MOSI, PIN_MISO, PIN_SCLK);
 
-  _m1 = new AlMar::Esp32::Driver_L298n(PIN_M1_EN, PIN_M1_IN1, PIN_M1_IN2, 200);
+  _m1 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200);
   _m1->begin();
 }
 
@@ -67,7 +75,8 @@ void loop()
 
   if (_first_time) // only execute in first execution of loop
   {
-    _newRef = 20;  // first reference at startup currently set to 20° to be defined with calibration 
+    _newRef = 90;  // first reference at startup currently set to 20° to be defined with calibration 
+    //_newRef = 135 ;    // first reference  for ellbow motor
     _first_time = 0;
   }
 
@@ -96,13 +105,13 @@ void loop()
     {
       _m1->SetDuty(0.0);
     }
-    else if ((ducy_m1) < 0.11 && ducy_m1 > 0.0)
+    else if ((ducy_m1) < 0.12 && ducy_m1 > 0.0)
     {
-      _m1->SetDuty(0.11);
+      _m1->SetDuty(0.12);
     }
-    else if ((ducy_m1) > -0.11 && ducy_m1 < -0.001)
+    else if ((ducy_m1) > -0.12 && ducy_m1 < -0.001)
     {
-      _m1->SetDuty(-0.11);
+      _m1->SetDuty(-0.12);
     }
     else if ((ducy_m1) > 0.4)
     {
@@ -185,9 +194,9 @@ float GetReference()
 float ControlPid(float ref, float refOld, float angle, float angleOld)
 {
   // defintion of constants of control
-  float kP = 2.9;  // proportional gain - motor forearm
-  float kI = 0.22; // integral gain - motor forearm
-  float kD = 0.1;  // differential gain -motor forearm
+  float kP = 5.5 ;//3.5;//4.0;  // proportional gain - motor forearm
+  float kI = 2.0;// 0.22; // integral gain - motor forearm
+  float kD = 0;//0.2;  // differential gain -motor forearm
 
   // definition of timestep (depends on recurring task time in which control will run) & saturation limits
   // for now set to 10ms
