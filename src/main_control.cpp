@@ -19,9 +19,9 @@
 //#define PIN_M3_IN2 8
 
 // definition of pins encoder
-#define PIN_CS_M1 42//10 // (chip select for encoder of motor 1) 10 for SPI3
+#define PIN_CS_M1 10 // (chip select for encoder of motor 1) 10 for SPI3
 #define PIN_CS_M2 40 // (chip select for encoder of motor 2)
-#define PIN_CS_M3 10//41 // (chip select for encoder of motor 3)
+#define PIN_CS_M3 41 // (chip select for encoder of motor 3)
 // common pins for all encoders
 #define PIN_SCLK 12 // 36 // 12 for SPI3
 #define PIN_MISO 13 // 37 // 13 for SPI3
@@ -105,13 +105,13 @@ void loop()
     {
       _m1->SetDuty(0.0);
     }
-    else if ((ducy_m1) < 0.12 && ducy_m1 > 0.0)
+    else if ((ducy_m1) < 0.15 && ducy_m1 > 0.0)
     {
-      _m1->SetDuty(0.12);
+      _m1->SetDuty(0.15);
     }
-    else if ((ducy_m1) > -0.12 && ducy_m1 < -0.001)
+    else if ((ducy_m1) > -0.11 && ducy_m1 < -0.001)
     {
-      _m1->SetDuty(-0.12);
+      _m1->SetDuty(-0.11);
     }
     else if ((ducy_m1) > 0.4)
     {
@@ -150,7 +150,7 @@ void loop()
 
   /* wait 100ms */
   /* only for standalone control code necessary to be done by scheduler in integrated program */
-  delay(100);
+  delay(10);
 }
 
 /* function definitions */
@@ -184,7 +184,7 @@ float GetReference()
     refPosition = Serial.readString();
     refPosition.trim();
     // Serial.printf("ref position: %s", refPosition);
-    Serial.printf("ref set to: %f \n", refPosition.toFloat());
+    Serial.printf("ref set to: %f \t", refPosition.toFloat());
 
     refPos = refPosition.toFloat();
   }
@@ -194,13 +194,24 @@ float GetReference()
 float ControlPid(float ref, float refOld, float angle, float angleOld)
 {
   // defintion of constants of control
-  float kP = 5.5 ;//3.5;//4.0;  // proportional gain - motor forearm
-  float kI = 2.0;// 0.22; // integral gain - motor forearm
-  float kD = 0;//0.2;  // differential gain -motor forearm
+  float kP = 1.3;
+  ;
+  if ((ref-angle) > 0) 
+  {
+    kP = 5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
+  }
+  else 
+  {
+    // do nothing
+  }
+  Serial.printf("kP: %f \n", kP);
+
+  float kI = 2.2;   // integral gain - motor forearm
+  float kD = 0;     // differential gain -motor forearm
 
   // definition of timestep (depends on recurring task time in which control will run) & saturation limits
   // for now set to 10ms
-  float timeStep = 0.1;
+  float timeStep = 0.01;
 
   // definition of factors for easier readability of the formulas, only needed if filter will be used
   float intPart;
