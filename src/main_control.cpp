@@ -193,9 +193,9 @@ if(m2){
     {
       _m3->SetDuty(0.15);
     }
-    else if ((ducy_m3) > -0.11 && ducy_m3 < -0.001)
+    else if ((ducy_m3) > -0.075 && ducy_m3 < -0.001)
     {
-      _m3->SetDuty(-0.11);
+      _m3->SetDuty(-0.075);
     }
     else if ((ducy_m3) > 0.4)
     {
@@ -319,9 +319,9 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
 float ControlPiM3(float ref, float refOld, float angle, float angleOld)
 {
   // defintion of constants of control
-  float kP = 3;
+  float kP = 1.5; // downwards
   ;
-  if ((ref-angle) > 0) 
+  if ((ref-angle) > 0) // upwards
   {
     kP = 3; //5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
   }
