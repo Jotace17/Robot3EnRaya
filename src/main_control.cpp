@@ -44,10 +44,14 @@ float _iOld = 0;
 int _sat = 0;
 
 float _oldRef_m2 = 0;
+float _oldRef_m3 = 0;
 float _oldAngle_m2 = 0;
+float _oldAngle_m3 = 0;
 float _newRef;
 float _newRef_m2;
 float _newRef_m3;
+
+bool m2 = 0;
 
 static int _first_time = 1;
 
@@ -70,7 +74,7 @@ void setup()
   _m1 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200);
   _m1->begin();
   // M2 - shoulder 
-  _m2 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200);
+  _m2 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200); 
   _m2->begin();
 
   // M3 - ellbow
@@ -91,12 +95,11 @@ void loop()
     _newRef = 90;  // first reference for motor 2 - limits ca. 30° to 100°
     _newRef_m2 = 90;  // first reference for motor 2 - limits ca. 30° to 100°
     _newRef_m3 = 150; // first reference for motor 3 - limits ca. 130° - 180°
-    //_newRef = 135 ;    // first reference  for ellbow motor
     _first_time = 0;
   }
 
   float currentAngle = GetAngle();    // read angle from encoder
-
+if(m2){
   if (abs(_newRef_m2 - currentAngle) > allowedError)   // control loop if angle difference is > allowed error
   {
     /* only for debugging purposes */
@@ -162,7 +165,72 @@ void loop()
     }
   }
   float _oldRef_m2 = _newRef_m2;          // update value of previous reference - tbc if it is the right place here?? 
+}
+  if (abs(_newRef_m3 - currentAngle) > allowedError)   // control loop if angle difference is > allowed error
+  {
+    /* only for debugging purposes */
+    float refdif = _newRef_m3 - currentAngle;
+    Serial.printf("_newRef-currentAngle = %.2f\t", refdif);
+    
+    /* calculation of duty cycle by control */
+    float ducy_m3 = ControlPiM3(_newRef_m3, _oldRef_m3, currentAngle, _oldAngle_m3);
+    Serial.printf("Control Out: %f.1  \t\t", ducy_m3);
 
+    _oldAngle_m3 = currentAngle;         // update value of old angle 
+
+    /* only for debugging purposes */
+    Serial.printf("Current Angle deg: %f\t\t### \t\t", currentAngle);
+    Serial.printf("ducy: %.2f \t", ducy_m3);
+    Serial.printf("_newRef_m3: %f \n", _newRef_m3);
+
+    /* limitation of duty cycle */
+    /* to be cleaned up and put into function or into control */
+    if (abs(ducy_m3) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
+    {
+      _m3->SetDuty(0.0);
+    }
+    else if ((ducy_m3) < 0.15 && ducy_m3 > 0.0)
+    {
+      _m3->SetDuty(0.15);
+    }
+    else if ((ducy_m3) > -0.11 && ducy_m3 < -0.001)
+    {
+      _m3->SetDuty(-0.11);
+    }
+    else if ((ducy_m3) > 0.4)
+    {
+      _m3->SetDuty(0.4);
+    }
+    else if ((ducy_m3) < -0.4)
+    {
+      _m3->SetDuty(-0.4);
+    }
+    else
+    {
+      _m3->SetDuty(ducy_m3);
+    }
+  }
+  else
+  {
+    /* stop motor and read actual angle */
+    _m3->SetDuty(0); 
+    currentAngle = GetAngle();
+    Serial.printf("else: angle read %.2f:\n", currentAngle);
+
+    /* reading of new reference position */
+    /* currently does only work in loop, because function returns 0 if there is no input in serial content is the same as in GetReference() */
+    String refPosition;
+    Serial.printf("Put in desired position in degree: \n");
+    while (Serial.available() > 0)
+    {
+      /* Read the input position */
+      refPosition = Serial.readString();
+      refPosition.trim();
+      Serial.printf("ref set to: %f \n", refPosition.toFloat());
+      _newRef_m3 = refPosition.toFloat();      // pass string to float value for control
+    }
+  }
+  float _oldRef_m3 = _newRef_m3;          // update value of previous reference - tbc if it is the right place here?? 
 
   /* wait 100ms */
   /* only for standalone control code necessary to be done by scheduler in integrated program */
@@ -251,11 +319,11 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
 float ControlPiM3(float ref, float refOld, float angle, float angleOld)
 {
   // defintion of constants of control
-  float kP = 1.3;
+  float kP = 3;
   ;
   if ((ref-angle) > 0) 
   {
-    kP = 1.3;; //5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
+    kP = 3; //5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
   }
   else 
   {
