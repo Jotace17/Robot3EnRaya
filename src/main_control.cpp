@@ -46,7 +46,8 @@ int _sat = 0;
 float _oldRef = 0;
 float _oldAngle = 0;
 float _newRef;
-float  _newRef_m2;
+float _newRef_m2;
+float _newRef_m3;
 
 static int _first_time = 1;
 
@@ -86,22 +87,23 @@ void loop()
 
   if (_first_time) // only execute in first execution of loop
   {
-    _newRef = 90;  // first reference for motor 1 - limits ca. 30° to 100°
-    _newRef_m2 = 150; // first reference for motor 2 - limits ca. 130° - 180°
+    _newRef = 90;  // first reference for motor 2 - limits ca. 30° to 100°
+    _newRef_m2 = 90;  // first reference for motor 2 - limits ca. 30° to 100°
+    _newRef_m3 = 150; // first reference for motor 3 - limits ca. 130° - 180°
     //_newRef = 135 ;    // first reference  for ellbow motor
     _first_time = 0;
   }
 
   float currentAngle = GetAngle();    // read angle from encoder
 
-  if (abs(_newRef - currentAngle) > allowedError)   // control loop if angle difference is > allowed error
+  if (abs(_newRef_m2 - currentAngle) > allowedError)   // control loop if angle difference is > allowed error
   {
     /* only for debugging purposes */
-    float refdif = _newRef - currentAngle;
+    float refdif = _newRef_m2 - currentAngle;
     Serial.printf("_newRef-currentAngle = %.2f\t", refdif);
     
     /* calculation of duty cycle by control */
-    float ducy_m2 = ControlPiM2(_newRef, _oldRef, currentAngle, _oldAngle);
+    float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef, currentAngle, _oldAngle);
     Serial.printf("Control Out: %f.1  \t\t", ducy_m2);
 
     _oldAngle = currentAngle;         // update value of old angle 
@@ -109,7 +111,7 @@ void loop()
     /* only for debugging purposes */
     Serial.printf("Current Angle deg: %f\t\t### \t\t", currentAngle);
     Serial.printf("ducy: %.2f \t", ducy_m2);
-    Serial.printf("_newRef: %f \n", _newRef);
+    Serial.printf("_newRef: %f \n", _newRef_m2);
 
     /* limitation of duty cycle */
     /* to be cleaned up and put into function or into control */
@@ -155,10 +157,10 @@ void loop()
       refPosition = Serial.readString();
       refPosition.trim();
       Serial.printf("ref set to: %f \n", refPosition.toFloat());
-      _newRef = refPosition.toFloat();      // pass string to float value for control
+      _newRef_m2 = refPosition.toFloat();      // pass string to float value for control
     }
   }
-  float _oldRef = _newRef;          // update value of previous reference - tbc if it is the right place here?? 
+  float _oldRef = _newRef_m2;          // update value of previous reference - tbc if it is the right place here?? 
 
   /* wait 100ms */
   /* only for standalone control code necessary to be done by scheduler in integrated program */
