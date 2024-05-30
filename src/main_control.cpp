@@ -14,9 +14,9 @@
 #define PIN_M2_IN1 6
 #define PIN_M2_IN2 14
 
-//#define PIN_M3_EN 17
-//#define PIN_M3_IN1 18
-//#define PIN_M3_IN2 8
+#define PIN_M3_EN 17
+#define PIN_M3_IN1 18
+#define PIN_M3_IN2 8
 
 // definition of pins encoder
 #define PIN_CS_M1 10 // (chip select for encoder of motor 1) 10 for SPI3
@@ -38,6 +38,7 @@ int cs_pins[] = {PIN_CS_M1, PIN_CS_M2, PIN_CS_M3};
 // definition of global variables control
 AlMar::Esp32::Driver_L298n *_m1;
 AlMar::Esp32::Driver_L298n *_m2;
+AlMar::Esp32::Driver_L298n *_m3;
 float _dOld = 0;
 float _iOld = 0;
 int _sat = 0;
@@ -45,6 +46,7 @@ int _sat = 0;
 float _oldRef = 0;
 float _oldAngle = 0;
 float _newRef;
+float  _newRef_m2;
 
 static int _first_time = 1;
 
@@ -68,18 +70,24 @@ void setup()
   // M2 - shoulder 
   _m2 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200);
   _m2->begin();
+
+  // M3 - ellbow
+  _m3 = new AlMar::Esp32::Driver_L298n(PIN_M3_EN, PIN_M3_IN1, PIN_M3_IN2, 200);
+  _m3->begin();
 }
 
 void loop()
 {
   // definition of local variables
-  float ducy_m2;              // variable to store duty cycle
+  float ducy_m2;              // variable to store duty cycle for motor 2 (shoulder)
+  float ducy_m3;              // variable to store duty cycle for motor 3 (ellbow)
   float refPos;             // variable for reference angle of control
   float allowedError = 1.0; // variable to define allowed error of control
 
   if (_first_time) // only execute in first execution of loop
   {
-    _newRef = 90;  // first reference at startup currently set to 20° to be defined with calibration 
+    _newRef = 90;  // first reference for motor 1 - limits ca. 30° to 100°
+    _newRef_m2 = 150; // first reference for motor 2 - limits ca. 130° - 180°
     //_newRef = 135 ;    // first reference  for ellbow motor
     _first_time = 0;
   }
