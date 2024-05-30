@@ -108,13 +108,13 @@ if(m2){
     
     /* calculation of duty cycle by control */
     float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef_m2, currentAngle, _oldAngle_m2);
-    Serial.printf("Control Out: %f.1  \t\t", ducy_m2);
+    Serial.printf(">Control Out: %f.1  \t\t", ducy_m2);
 
     _oldAngle_m2 = currentAngle;         // update value of old angle 
 
     /* only for debugging purposes */
-    Serial.printf("Current Angle deg: %f\t\t### \t\t", currentAngle);
-    Serial.printf("ducy: %.2f \t", ducy_m2);
+    Serial.printf(">Current Angle deg: %f\t\t### \t\t", currentAngle);
+    Serial.printf(">ducy: %.2f \t", ducy_m2);
     Serial.printf("_newRef: %f \n", _newRef_m2);
 
     /* limitation of duty cycle */
@@ -166,6 +166,7 @@ if(m2){
   }
   float _oldRef_m2 = _newRef_m2;          // update value of previous reference - tbc if it is the right place here?? 
 }
+else {
   if (abs(_newRef_m3 - currentAngle) > allowedError)   // control loop if angle difference is > allowed error
   {
     /* only for debugging purposes */
@@ -174,13 +175,13 @@ if(m2){
     
     /* calculation of duty cycle by control */
     float ducy_m3 = ControlPiM3(_newRef_m3, _oldRef_m3, currentAngle, _oldAngle_m3);
-    Serial.printf("Control Out: %f.1  \t\t", ducy_m3);
+    Serial.printf(">Control Out m3: %f.1  \t\t", ducy_m3);
 
     _oldAngle_m3 = currentAngle;         // update value of old angle 
 
     /* only for debugging purposes */
-    Serial.printf("Current Angle deg: %f\t\t### \t\t", currentAngle);
-    Serial.printf("ducy: %.2f \t", ducy_m3);
+    Serial.printf(">Current Angle deg m3: %f\n", currentAngle);
+    Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
     Serial.printf("_newRef_m3: %f \n", _newRef_m3);
 
     /* limitation of duty cycle */
@@ -215,7 +216,7 @@ if(m2){
     /* stop motor and read actual angle */
     _m3->SetDuty(0); 
     currentAngle = GetAngle();
-    Serial.printf("else: angle read %.2f:\n", currentAngle);
+    //Serial.printf("else: angle read %.2f:\n", currentAngle);
 
     /* reading of new reference position */
     /* currently does only work in loop, because function returns 0 if there is no input in serial content is the same as in GetReference() */
@@ -226,13 +227,15 @@ if(m2){
       /* Read the input position */
       refPosition = Serial.readString();
       refPosition.trim();
-      Serial.printf("ref set to: %f \n", refPosition.toFloat());
+      //Serial.printf("ref set to: %f \n", refPosition.toFloat());
+      Serial.printf(">ref: %f \n", refPosition.toFloat());
       _newRef_m3 = refPosition.toFloat();      // pass string to float value for control
     }
   }
   float _oldRef_m3 = _newRef_m3;          // update value of previous reference - tbc if it is the right place here?? 
+}
 
-  /* wait 100ms */
+  /* wait 10ms */
   /* only for standalone control code necessary to be done by scheduler in integrated program */
   delay(10);
 }
