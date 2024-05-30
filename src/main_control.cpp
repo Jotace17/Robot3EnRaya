@@ -43,8 +43,8 @@ float _dOld = 0;
 float _iOld = 0;
 int _sat = 0;
 
-float _oldRef = 0;
-float _oldAngle = 0;
+float _oldRef_m2 = 0;
+float _oldAngle_m2 = 0;
 float _newRef;
 float _newRef_m2;
 float _newRef_m3;
@@ -57,7 +57,8 @@ AlMar::Esp32::EncoderATM203_Spi2 *_enc;
 // put function declarations here:
 float GetAngle();
 float GetReference();
-float ControlPiM2(float, float, float, float);  // Pi control for arm/shoulder 
+float ControlPiM2(float, float, float, float);  // adaptive P control for arm/shoulder 
+float ControlPiM3(float, float, float, float);  // Pi control for forearm/ellbow
 
 void setup()
 {
@@ -82,8 +83,8 @@ void loop()
   // definition of local variables
   float ducy_m2;              // variable to store duty cycle for motor 2 (shoulder)
   float ducy_m3;              // variable to store duty cycle for motor 3 (ellbow)
-  float refPos;             // variable for reference angle of control
-  float allowedError = 1.0; // variable to define allowed error of control
+  float refPos;               // variable for reference angle of control
+  float allowedError = 1.0;   // variable to define allowed error of control
 
   if (_first_time) // only execute in first execution of loop
   {
@@ -103,10 +104,10 @@ void loop()
     Serial.printf("_newRef-currentAngle = %.2f\t", refdif);
     
     /* calculation of duty cycle by control */
-    float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef, currentAngle, _oldAngle);
+    float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef_m2, currentAngle, _oldAngle_m2);
     Serial.printf("Control Out: %f.1  \t\t", ducy_m2);
 
-    _oldAngle = currentAngle;         // update value of old angle 
+    _oldAngle_m2 = currentAngle;         // update value of old angle 
 
     /* only for debugging purposes */
     Serial.printf("Current Angle deg: %f\t\t### \t\t", currentAngle);
@@ -160,7 +161,8 @@ void loop()
       _newRef_m2 = refPosition.toFloat();      // pass string to float value for control
     }
   }
-  float _oldRef = _newRef_m2;          // update value of previous reference - tbc if it is the right place here?? 
+  float _oldRef_m2 = _newRef_m2;          // update value of previous reference - tbc if it is the right place here?? 
+
 
   /* wait 100ms */
   /* only for standalone control code necessary to be done by scheduler in integrated program */
@@ -213,6 +215,47 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
   if ((ref-angle) > 0) 
   {
     kP = 5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
+  }
+  else 
+  {
+    // do nothing
+  }
+  Serial.printf("kP: %f \n", kP);
+
+  float kI = 2.2;   // integral gain - motor forearm
+  //float kD = 0;     // differential gain -motor forearm
+
+  // definition of timestep (depends on recurring task time in which control will run) & saturation limits
+  // for now set to 10ms
+  float timeStep = 0.01;
+
+  // definition of factors for easier readability of the formulas, only needed if filter will be used
+  float intPart;
+
+  // calculate integral part
+  float dI = kI * timeStep * ((refOld - angleOld) / 360);
+
+  // calculate proportional part
+  float propPart = kP * ((ref - angle) / 360);
+
+  // calculate differential part
+  //float difPart = _dOld + kD * ((ref - refOld) / 360) - kD * ((angle - angleOld) / 360);
+
+  // calculate control output
+  //float controlOut = (propPart + difPart + intPart);
+  float controlOut = (propPart + intPart);
+
+  return controlOut;
+}
+
+float ControlPiM3(float ref, float refOld, float angle, float angleOld)
+{
+  // defintion of constants of control
+  float kP = 1.3;
+  ;
+  if ((ref-angle) > 0) 
+  {
+    kP = 1.3;; //5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
   }
   else 
   {
