@@ -37,6 +37,7 @@ int cs_pins[] = {PIN_CS_M1, PIN_CS_M2, PIN_CS_M3};
 
 // definition of global variables control
 AlMar::Esp32::Driver_L298n *_m1;
+AlMar::Esp32::Driver_L298n *_m2;
 float _dOld = 0;
 float _iOld = 0;
 int _sat = 0;
@@ -53,7 +54,7 @@ AlMar::Esp32::EncoderATM203_Spi2 *_enc;
 // put function declarations here:
 float GetAngle();
 float GetReference();
-float ControlPid(float, float, float, float);
+float ControlPiM2(float, float, float, float);  // Pi control for arm/shoulder 
 
 void setup()
 {
@@ -64,12 +65,15 @@ void setup()
 
   _m1 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200);
   _m1->begin();
+  // M2 - shoulder 
+  _m2 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200);
+  _m2->begin();
 }
 
 void loop()
 {
   // definition of local variables
-  float ducy0;              // variable to store duty cycle
+  float ducy_m2;              // variable to store duty cycle
   float refPos;             // variable for reference angle of control
   float allowedError = 1.0; // variable to define allowed error of control
 
@@ -89,47 +93,47 @@ void loop()
     Serial.printf("_newRef-currentAngle = %.2f\t", refdif);
     
     /* calculation of duty cycle by control */
-    float ducy_m1 = ControlPid(_newRef, _oldRef, currentAngle, _oldAngle);
-    Serial.printf("Control Out: %f.1  \t\t", ducy_m1);
+    float ducy_m2 = ControlPiM2(_newRef, _oldRef, currentAngle, _oldAngle);
+    Serial.printf("Control Out: %f.1  \t\t", ducy_m2);
 
     _oldAngle = currentAngle;         // update value of old angle 
 
     /* only for debugging purposes */
     Serial.printf("Current Angle deg: %f\t\t### \t\t", currentAngle);
-    Serial.printf("ducy: %.2f \t", ducy_m1);
+    Serial.printf("ducy: %.2f \t", ducy_m2);
     Serial.printf("_newRef: %f \n", _newRef);
 
     /* limitation of duty cycle */
     /* to be cleaned up and put into function or into control */
-    if (abs(ducy_m1) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
+    if (abs(ducy_m2) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
     {
-      _m1->SetDuty(0.0);
+      _m2->SetDuty(0.0);
     }
-    else if ((ducy_m1) < 0.15 && ducy_m1 > 0.0)
+    else if ((ducy_m2) < 0.15 && ducy_m2 > 0.0)
     {
-      _m1->SetDuty(0.15);
+      _m2->SetDuty(0.15);
     }
-    else if ((ducy_m1) > -0.11 && ducy_m1 < -0.001)
+    else if ((ducy_m2) > -0.11 && ducy_m2 < -0.001)
     {
-      _m1->SetDuty(-0.11);
+      _m2->SetDuty(-0.11);
     }
-    else if ((ducy_m1) > 0.4)
+    else if ((ducy_m2) > 0.4)
     {
-      _m1->SetDuty(0.4);
+      _m2->SetDuty(0.4);
     }
-    else if ((ducy_m1) < -0.4)
+    else if ((ducy_m2) < -0.4)
     {
-      _m1->SetDuty(-0.4);
+      _m2->SetDuty(-0.4);
     }
     else
     {
-      _m1->SetDuty(ducy_m1);
+      _m2->SetDuty(ducy_m2);
     }
   }
   else
   {
     /* stop motor and read actual angle */
-    _m1->SetDuty(0); 
+    _m2->SetDuty(0); 
     currentAngle = GetAngle();
     Serial.printf("else: angle read %.2f:\n", currentAngle);
 
@@ -191,7 +195,7 @@ float GetReference()
   return refPos;
 }
 
-float ControlPid(float ref, float refOld, float angle, float angleOld)
+float ControlPiM2(float ref, float refOld, float angle, float angleOld)
 {
   // defintion of constants of control
   float kP = 1.3;
@@ -207,7 +211,7 @@ float ControlPid(float ref, float refOld, float angle, float angleOld)
   Serial.printf("kP: %f \n", kP);
 
   float kI = 2.2;   // integral gain - motor forearm
-  float kD = 0;     // differential gain -motor forearm
+  //float kD = 0;     // differential gain -motor forearm
 
   // definition of timestep (depends on recurring task time in which control will run) & saturation limits
   // for now set to 10ms
@@ -223,10 +227,11 @@ float ControlPid(float ref, float refOld, float angle, float angleOld)
   float propPart = kP * ((ref - angle) / 360);
 
   // calculate differential part
-  float difPart = _dOld + kD * ((ref - refOld) / 360) - kD * ((angle - angleOld) / 360);
+  //float difPart = _dOld + kD * ((ref - refOld) / 360) - kD * ((angle - angleOld) / 360);
 
   // calculate control output
-  float controlOut = (propPart + difPart + intPart);
+  //float controlOut = (propPart + difPart + intPart);
+  float controlOut = (propPart + intPart);
 
   return controlOut;
 }
