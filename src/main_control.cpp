@@ -316,43 +316,21 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
   return controlOut;
 }
 
-float ControlPiM3(float ref, float refOld, float angle, float angleOld)
+float ControlPiM3(float ref, float refOld, float angle, float angleOld)   // control for ellbow motor
 {
-  // defintion of constants of control
-  float kP = 1.5; // downwards
-  ;
-  if ((ref-angle) > 0) // upwards
+  // defintion of proportional gain 
+  float kP = 1.8;       // kP for downward movement
+  
+  if ((ref-angle) > 0)  // upwards
   {
-    kP = 3; //5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
+    kP = 3.0;           // kP for upward movement
   }
-  else 
-  {
-    // do nothing
-  }
+
+  // print proportional gain - only for debugging purposes
   Serial.printf("kP: %f \n", kP);
 
-  float kI = 2.2;   // integral gain - motor forearm
-  //float kD = 0;     // differential gain -motor forearm
-
-  // definition of timestep (depends on recurring task time in which control will run) & saturation limits
-  // for now set to 10ms
-  float timeStep = 0.01;
-
-  // definition of factors for easier readability of the formulas, only needed if filter will be used
-  float intPart;
-
-  // calculate integral part
-  float dI = kI * timeStep * ((refOld - angleOld) / 360);
-
-  // calculate proportional part
-  float propPart = kP * ((ref - angle) / 360);
-
-  // calculate differential part
-  //float difPart = _dOld + kD * ((ref - refOld) / 360) - kD * ((angle - angleOld) / 360);
-
-  // calculate control output
-  //float controlOut = (propPart + difPart + intPart);
-  float controlOut = (propPart + intPart);
+  // calculate proportional part = control output
+  float controlOut = kP * ((ref - angle) / 360);
 
   return controlOut;
 }
