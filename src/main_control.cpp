@@ -55,8 +55,8 @@ float _newRef_m2;
 float _newRef_m3;
 
 
-bool m2 = 0;
-bool m3 = 1;
+bool m2 = 1;
+bool m3 = 0;
 
 static int _first_time = 1;
 
@@ -86,14 +86,13 @@ void setup()
   // M3 - ellbow
   _m3 = new AlMar::Esp32::Driver_L298n(PIN_M3_EN, PIN_M3_IN1, PIN_M3_IN2, 200);
   _m3->begin();
-
-    Serial.printf("C: Put in desired position in degree: \n");
 }
 
 void loop()
 {
-  float angles[3];
+
   // definition of local variables
+  float angles[3];            // array for read angle values
   float ducy_m2;              // variable to store duty cycle for motor 2 (shoulder)
   float ducy_m3;              // variable to store duty cycle for motor 3 (ellbow)
   float refPos;               // variable for reference angle of control
@@ -101,15 +100,14 @@ void loop()
 
   if (_first_time) // only execute in first execution of loop
   {
-    _newRef = 90;  // first reference for motor 2 - limits ca. 30° to 100°
+    //_newRef = 90;      // first reference for motor 2 - limits ca. 30° to 100°
     _newRef_m1 = 180;  // first reference for motor 2 - limits ca. 30° to 100°
-    _newRef_m2 = 90;  // first reference for motor 2 - limits ca. 30° to 100°
-    _newRef_m3 = 165; // first reference for motor 3 - limits ca. 145 - 190°
+    _newRef_m2 = 90;   // first reference for motor 2 - limits ca. 30° to 100°
+    _newRef_m3 = 165;  // first reference for motor 3 - limits ca. 145 - 190°
     _first_time = 0;
   }
 
-  //float currentAngle = GetAngle();    // read angle from encoder
-  GetAngle(angles);
+  GetAngle(angles);   // read all three angles from the encoders
   
 if(m2){
   float currentAngle = angles[1];
@@ -121,12 +119,12 @@ if(m2){
     
     /* calculation of duty cycle by control */
     float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef_m2, currentAngle, _oldAngle_m2);
-    Serial.printf(">Control Out: %f.1  \t\t", ducy_m2);
+    Serial.printf(">Control Out m2: %f  \n", ducy_m2);
 
     _oldAngle_m2 = currentAngle;         // update value of old angle 
 
     /* only for debugging purposes */
-    Serial.printf(">Current Angle deg: %f\t\t### \t\t", currentAngle);
+    Serial.printf(">Current Angle deg m2: %f\n", currentAngle);
     Serial.printf(">ducy: %.2f \t", ducy_m2);
     Serial.printf("_newRef: %f \n", _newRef_m2);
 
@@ -228,11 +226,11 @@ else if (m3){
     _m3->SetDuty(0); 
     GetAngle(angles);
     currentAngle = angles[2];
-    //Serial.printf("else: angle read %.2f:\n", currentAngle);
 
     /* reading of new reference position */
     /* currently does only work in loop, because function returns 0 if there is no input in serial content is the same as in GetReference() */
     String refPosition;
+    Serial.printf("A: Put in desired position in degree: \n");
     while (Serial.available() > 0)
     {
       /* Read the input position */
@@ -241,9 +239,6 @@ else if (m3){
       _newRef_m3 = refPosition.toFloat();      // pass string to float value for control
       //Serial.printf("ref set to: %f \n", refPosition.toFloat());
       Serial.printf(">ref: %f \n", _newRef_m3);
-
-    Serial.printf("A: Put in desired position in degree: \n");
-      
     }
   }
   float _oldRef_m3 = _newRef_m3;          // update value of previous reference - tbc if it is the right place here?? 
