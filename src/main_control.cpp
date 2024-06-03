@@ -39,6 +39,13 @@ int cs_pins[] = {PIN_CS_M1, PIN_CS_M2, PIN_CS_M3};
 AlMar::Esp32::Driver_L298n *_m1;
 AlMar::Esp32::Driver_L298n *_m2;
 AlMar::Esp32::Driver_L298n *_m3;
+
+hw_timer_t *timer = NULL;
+bool _expired = false;
+void IRAM_ATTR timerInterrupt(){
+  _expired = true;
+}
+
 float _dOld = 0;
 float _iOld = 0;
 int _sat = 0;
@@ -59,6 +66,7 @@ bool m2 = 1;
 bool m3 = 1;
 
 static int _first_time = 1;
+const float _dt = 0.01;
 
 // definition of global variables encoder
 AlMar::Esp32::EncoderATM203_Spi2 *_enc;
@@ -86,11 +94,17 @@ void setup()
   // M3 - ellbow
   _m3 = new AlMar::Esp32::Driver_L298n(PIN_M3_EN, PIN_M3_IN1, PIN_M3_IN2, 200);
   _m3->begin();
+
+  /* timer initialization*/
+  timer = timerBegin(0,80,true);
+  timerAttachInterrupt(timer, &timerInterrupt, true); // Attach the interrupt handling function
+  timerAlarmWrite(timer, 1000000*_dt, true); // Interrupt every 1 second
+  timerAlarmEnable(timer); // Enable the alarm
 }
 
 void loop()
 {
-
+if(_expired){
   // definition of local variables
   float angles[3];          // array for read angle values
   float ducy_m2;            // variable to store duty cycle for motor 2 (shoulder)
@@ -236,7 +250,9 @@ void loop()
 
   /* wait 10ms */
   /* only for standalone control code necessary to be done by scheduler in integrated program */
-  delay(10);
+  _expired = false;
+  //delay(10);
+}
 }
 
 /* function definitions */
