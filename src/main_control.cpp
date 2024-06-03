@@ -64,11 +64,11 @@ static int _first_time = 1;
 AlMar::Esp32::EncoderATM203_Spi2 *_enc;
 
 // put function declarations here:
-void GetAngle(float* angles);
-float GetReference(float* angles);
-float ControlPiM1(float, float, float, float);  // adaptive P control for arm/shoulder 
-float ControlPiM2(float, float, float, float);  // adaptive P control for arm/shoulder 
-float ControlPiM3(float, float, float, float);  // Pi control for forearm/ellbow
+void GetAngle(float *angles);
+float GetReference(float *angles);
+float ControlPiM1(float, float, float, float); // adaptive P control for arm/shoulder
+float ControlPiM2(float, float, float, float); // adaptive P control for arm/shoulder
+float ControlPiM3(float, float, float, float); // Pi control for forearm/ellbow
 float SetDutyDeadZone(int motor, float ducy);
 
 void setup()
@@ -80,11 +80,9 @@ void setup()
 
   _m1 = new AlMar::Esp32::Driver_L298n(PIN_M1_EN, PIN_M1_IN1, PIN_M1_IN2, 200);
   _m1->begin();
-
-  // M2 - shoulder 
-  _m2 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200); 
+  // M2 - shoulder
+  _m2 = new AlMar::Esp32::Driver_L298n(PIN_M2_EN, PIN_M2_IN1, PIN_M2_IN2, 200);
   _m2->begin();
-
   // M3 - ellbow
   _m3 = new AlMar::Esp32::Driver_L298n(PIN_M3_EN, PIN_M3_IN1, PIN_M3_IN2, 200);
   _m3->begin();
@@ -94,64 +92,55 @@ void loop()
 {
 
   // definition of local variables
-  float angles[3];            // array for read angle values
-  float ducy_m2;              // variable to store duty cycle for motor 2 (shoulder)
-  float ducy_m3;              // variable to store duty cycle for motor 3 (ellbow)
-  float refPos;               // variable for reference angle of control
-  float allowedError = 1.8;   // variable to define allowed error of control
+  float angles[3];          // array for read angle values
+  float ducy_m2;            // variable to store duty cycle for motor 2 (shoulder)
+  float ducy_m3;            // variable to store duty cycle for motor 3 (ellbow)
+  float refPos;             // variable for reference angle of control
+  float allowedError = 1.8; // variable to define allowed error of control
 
   if (_first_time) // only execute in first execution of loop
   {
-    _newRef_m1 = 180;  // first reference for motor 2 - limits ca. 30° to 100°
-    _newRef_m2 = 90;   // first reference for motor 2 - limits ca. 30° to 100°
-    _newRef_m3 = 165;  // first reference for motor 3 - limits ca. 145 - 190°
+    _newRef_m1 = 180; // first reference for motor 2 - limits ca. 30° to 100°
+    _newRef_m2 = 90;  // first reference for motor 2 - limits ca. 30° to 100°
+    _newRef_m3 = 165; // first reference for motor 3 - limits ca. 145 - 190°
     _first_time = 0;
   }
 
-  GetAngle(angles);   // read all three angles from the encoders
-  
-//if(m2){
+  GetAngle(angles); // read all three angles from the encoders
+
+  // if(m2){
   float refdif = _newRef_m2 - angles[1];
   Serial.printf(">A _newRef-currentAngle m2: %.2f\n", refdif);
-  Serial.printf(">A _newRef-currentAngle m3: %.2f\n", (_newRef_m3-angles[2]));
-  if (abs(_newRef_m2 - angles[1]) > allowedError)   // control loop if angle difference is > allowed error
+  Serial.printf(">A _newRef-currentAngle m3: %.2f\n", (_newRef_m3 - angles[2]));
+  if (abs(_newRef_m2 - angles[1]) > allowedError) // control loop if angle difference is > allowed error
   {
-    /* only for debugging purposes */
-    float refdif = _newRef_m2 - angles[1];
-    Serial.printf("_newRef-currentAngle m2 = %.2f\t", refdif);
-    
     /* calculation of duty cycle by control */
     float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef_m2, angles[1], _oldAngle_m2);
 
-    _oldAngle_m2 = angles[1];         // update value of old angle 
+    _oldAngle_m2 = angles[1]; // update value of old angle
     /* limitation of duty cycle */
-    float ducyLimM2 =  SetDutyDeadZone(2, ducy_m2);
+    float ducyLimM2 = SetDutyDeadZone(2, ducy_m2);
     _m2->SetDuty(ducyLimM2);
 
     /* only for debugging purposes */
-    Serial.printf(">Current Angle deg m2: %f\n", angles[1]);
+    Serial.printf(">Current Angle m2: %f\n", angles[1]);
     Serial.printf(">ducy m2: %.2f \n", ducy_m2);
     Serial.printf("_newRef m2: %f \n", _newRef_m2);
     Serial.printf(">Limitated DuCy M2: %f \n", ducyLimM2);
   }
   else
   {
-    /* stop motor an read new reference */
-    _m2->SetDuty(0); 
-    //GetAngle(angles); 
+    /* stop motor and read new reference */
+    _m2->SetDuty(0);
     GetReference(angles);
   }
-  //float _oldRef_m2 = _newRef_m2;          // update value of previous reference - tbc if it is the right place here?? 
-//}
-//else if (m3){
-
-  if (abs(_newRef_m3 - angles[2]) > allowedError)   // control loop if angle difference is > allowed error
+  if (abs(_newRef_m3 - angles[2]) > allowedError) // control loop if angle difference is > allowed error
   {
     /* calculation of duty cycle by control */
     float ducy_m3 = ControlPiM3(_newRef_m3, _oldRef_m3, angles[2], _oldAngle_m3);
-    _oldAngle_m3 = angles[2];         // update value of old angle 
+    _oldAngle_m3 = angles[2]; // update value of old angle
     /* limitation of duty cycle */
-    float ducyLimM3 =  SetDutyDeadZone(3, ducy_m3);
+    float ducyLimM3 = SetDutyDeadZone(3, ducy_m3);
     _m3->SetDuty(ducyLimM3);
 
     /* only for debugging purposes */
@@ -165,84 +154,85 @@ void loop()
   else
   {
     /* stop motor and read actual angle -> is this really needed */
-    _m3->SetDuty(0); 
+    _m3->SetDuty(0);
     GetReference(angles);
   }
-  //float _oldRef_m3 = _newRef_m3;          // update value of previous reference - tbc if it is the right place here?? currently anyway unused
-//}
+  // float _oldRef_m3 = _newRef_m3;          // update value of previous reference - tbc if it is the right place here?? currently anyway unused
+  //}
 
-if (m1) {
-  float currentAngle = angles[0];
-  if (abs(_newRef_m1 - currentAngle) > allowedError)   // control loop if angle difference is > allowed error
+  if (m1)
   {
-    /* only for debugging purposes */
-    float refdif = _newRef_m1 - currentAngle;
-    Serial.printf("_newRef_m1-currentAngle = %.2f\t", refdif);
-    
-    /* calculation of duty cycle by control */
-    float ducy_m1 = ControlPiM1(_newRef_m1, _oldRef_m1, currentAngle, _oldAngle_m1);
-    Serial.printf(">Control Out m1: %f.1  \n", ducy_m1);
+    float currentAngle = angles[0];
+    if (abs(_newRef_m1 - currentAngle) > allowedError) // control loop if angle difference is > allowed error
+    {
+      /* only for debugging purposes */
+      float refdif = _newRef_m1 - currentAngle;
+      Serial.printf("_newRef_m1-currentAngle = %.2f\t", refdif);
 
-    _oldAngle_m1 = currentAngle;         // update value of old angle 
+      /* calculation of duty cycle by control */
+      float ducy_m1 = ControlPiM1(_newRef_m1, _oldRef_m1, currentAngle, _oldAngle_m1);
+      Serial.printf(">Control Out m1: %f.1  \n", ducy_m1);
 
-    /* only for debugging purposes */
-    Serial.printf(">Current Angle deg m1: %f\n", currentAngle);
-    Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
-    Serial.printf("_newRef_m1: %f \n", _newRef_m1);
+      _oldAngle_m1 = currentAngle; // update value of old angle
 
-    /* limitation of duty cycle */
-    /* to be cleaned up and put into function or into control */
-    /*if (abs(ducy_m1) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
-    {
-      _m1->SetDuty(0.0);
-    }
-    else if ((ducy_m1) < 0.13 && ducy_m1 > 0.0)
-    {
-      _m1->SetDuty(0.13);
-    }
-    else if ((ducy_m1) > -0.13 && ducy_m1 < -0.001)
-    {
-      _m1->SetDuty(-0.13);
-    }
-    else if ((ducy_m1) > 0.4)
-    {
-      _m1->SetDuty(0.4);
-    }
-    else if ((ducy_m1) < -0.4)
-    {
-      _m1->SetDuty(-0.4);
-    }
-    else*/
-    //{
+      /* only for debugging purposes */
+      Serial.printf(">Current Angle deg m1: %f\n", currentAngle);
+      Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
+      Serial.printf("_newRef_m1: %f \n", _newRef_m1);
+
+      /* limitation of duty cycle */
+      /* to be cleaned up and put into function or into control */
+      /*if (abs(ducy_m1) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
+      {
+        _m1->SetDuty(0.0);
+      }
+      else if ((ducy_m1) < 0.13 && ducy_m1 > 0.0)
+      {
+        _m1->SetDuty(0.13);
+      }
+      else if ((ducy_m1) > -0.13 && ducy_m1 < -0.001)
+      {
+        _m1->SetDuty(-0.13);
+      }
+      else if ((ducy_m1) > 0.4)
+      {
+        _m1->SetDuty(0.4);
+      }
+      else if ((ducy_m1) < -0.4)
+      {
+        _m1->SetDuty(-0.4);
+      }
+      else*/
+      //{
       //_m1->SetDuty(ducy_m1);
-    //}
-  }
-  else
-  {
-    /* stop motor and read actual angle */
-    _m1->SetDuty(0); 
-    GetAngle(angles);
-    currentAngle = angles[0];
-    //Serial.printf("else: angle read %.2f:\n", currentAngle);
-
-    /* reading of new reference position */
-    /* currently does only work in loop, because function returns 0 if there is no input in serial content is the same as in GetReference() */
-    String refPosition;
-    Serial.printf("(%i) ref_m1: %f, error: %f \t %f \n", (abs(_newRef_m1 - currentAngle)) > allowedError, _newRef_m1, (abs(_newRef_m1 - currentAngle)), allowedError);
-    
-    while (Serial.available() > 0)
-    {
-      Serial.printf("B: Put in desired position in degree: \n");
-      /* Read the input position */
-      refPosition = Serial.readString();
-      refPosition.trim();
-      _newRef_m1 = refPosition.toFloat();      // pass string to float value for control
-      //Serial.printf("ref set to: %f \n", refPosition.toFloat());
-      Serial.printf(">ref_m1: %f \n", _newRef_m1);
+      //}
     }
+    else
+    {
+      /* stop motor and read actual angle */
+      _m1->SetDuty(0);
+      GetAngle(angles);
+      currentAngle = angles[0];
+      // Serial.printf("else: angle read %.2f:\n", currentAngle);
+
+      /* reading of new reference position */
+      /* currently does only work in loop, because function returns 0 if there is no input in serial content is the same as in GetReference() */
+      String refPosition;
+      Serial.printf("(%i) ref_m1: %f, error: %f \t %f \n", (abs(_newRef_m1 - currentAngle)) > allowedError, _newRef_m1, (abs(_newRef_m1 - currentAngle)), allowedError);
+
+      while (Serial.available() > 0)
+      {
+        Serial.printf("B: Put in desired position in degree: \n");
+        /* Read the input position */
+        refPosition = Serial.readString();
+        refPosition.trim();
+        _newRef_m1 = refPosition.toFloat(); // pass string to float value for control
+        // Serial.printf("ref set to: %f \n", refPosition.toFloat());
+        Serial.printf(">ref_m1: %f \n", _newRef_m1);
+      }
+    }
+    float _oldRef_m1 = _newRef_m1; // update value of previous reference - tbc if it is the right place here??
   }
-  float _oldRef_m1 = _newRef_m1;          // update value of previous reference - tbc if it is the right place here?? 
-}
 
   /* wait 10ms */
   /* only for standalone control code necessary to be done by scheduler in integrated program */
@@ -250,63 +240,58 @@ if (m1) {
 }
 
 /* function definitions */
-void GetAngle(float* angles)
+void GetAngle(float *angles)
 {
   // read encoder
   int posBase = (float)_enc->Read(0);
   int posShoulder = (float)_enc->Read(1);
   int posEllbow = (float)_enc->Read(2);
 
-  float posAll[] = {(float)posBase,(float)posShoulder,(float)posEllbow};
-  
+  float posAll[] = {(float)posBase, (float)posShoulder, (float)posEllbow};
+
   // Define the size of the posAll array
   const int size = sizeof(posAll) / sizeof(posAll[0]);
 
   if (posBase != 0x80000000)
   {
     // Perform the multiplication and store the results in readAngle
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++)
+    {
       angles[i] = posAll[i] * 360.0f / 4096.0f;
     }
   }
-  else
-  {
-    // do nothing
-  }
 }
 
-float GetReference(float* angles)
+float GetReference(float *angles)
 {
   /* reading of new reference position */
-    /* currently does only work in loop, because function returns 0 if there is no input in serial content is the same as in GetReference() */
-    String refPosition;
-    //Serial.printf("A: Put in desired position in degree: \n");
-    while (Serial.available() > 0)
+  /* currently does only work in loop, because function returns 0 if there is no input in serial content is the same as in GetReference() */
+  String refPosition;
+  // Serial.printf("A: Put in desired position in degree: \n");
+  while (Serial.available() > 0)
+  {
+    /* Read the input position */
+    refPosition = Serial.readString();
+    refPosition.trim();
+    String motorIndex = refPosition.substring(0, 2);
+    float refAngle = refPosition.substring(3).toFloat();
+    // if ((motorIndex == "m3") && (_newRef_m3 - angles[2] < 2))
+    if ((motorIndex == "m3"))
     {
-       /* Read the input position */
-      refPosition = Serial.readString();
-      refPosition.trim();
-      String motorIndex = refPosition.substring(0,2);
-      float refAngle = refPosition.substring(3).toFloat(); 
-      //if ((motorIndex == "m3") && (_newRef_m3 - angles[2] < 2))
-      if ((motorIndex == "m3")){
-        _newRef_m3 = refAngle;
-        Serial.printf("> new Ref m3: %f \n", _newRef_m3);
-      }
-      else if (motorIndex == "m2") {
-        _newRef_m2 = refAngle;
-        Serial.printf("> new Ref m2: %f \n", _newRef_m2);
-      }
-      else 
-      {
-        // do nothing
-      }
-      //Serial.printf("ref set to: %f \n", refPosition.toFloat());
-      Serial.printf(">ref: %f \n", _newRef_m3);
-      Serial.printf("motorRef: %s \n", motorIndex);
+      _newRef_m3 = refAngle;
+      Serial.printf("> new Ref m3: %f \n", _newRef_m3);
     }
+    else if (motorIndex == "m2")
+    {
+      _newRef_m2 = refAngle;
+      Serial.printf("> new Ref m2: %f \n", _newRef_m2);
+    }
+    // Serial.printf("ref set to: %f \n", refPosition.toFloat());
+    Serial.printf(">ref: %f \n", _newRef_m3);
+    Serial.printf("motorRef: %s \n", motorIndex);
+  }
 
-    return 0;
+  return 0;
 }
 
 float ControlPiM2(float ref, float refOld, float angle, float angleOld)
@@ -314,18 +299,14 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
   // defintion of constants of control
   float kP = 1.3;
   ;
-  if ((ref-angle) > 0) 
+  if ((ref - angle) > 0)
   {
-    kP = 5 + (0.04*(90-angle));  // adaptive proportional gain - motor forearm 
-  }
-  else 
-  {
-    // do nothing
+    kP = 5 + (0.04 * (90 - angle)); // adaptive proportional gain - motor forearm
   }
   Serial.printf("kP: %f \n", kP);
 
-  float kI = 2.2;   // integral gain - motor forearm
-  //float kD = 0;     // differential gain -motor forearm
+  float kI = 2.2; // integral gain - motor forearm
+  // float kD = 0;     // differential gain -motor forearm
 
   // definition of timestep (depends on recurring task time in which control will run) & saturation limits
   // for now set to 10ms
@@ -341,23 +322,23 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
   float propPart = kP * ((ref - angle) / 360);
 
   // calculate differential part
-  //float difPart = _dOld + kD * ((ref - refOld) / 360) - kD * ((angle - angleOld) / 360);
+  // float difPart = _dOld + kD * ((ref - refOld) / 360) - kD * ((angle - angleOld) / 360);
 
   // calculate control output
-  //float controlOut = (propPart + difPart + intPart);
+  // float controlOut = (propPart + difPart + intPart);
   float controlOut = (propPart + intPart);
 
   return controlOut;
 }
 
-float ControlPiM3(float ref, float refOld, float angle, float angleOld)   // control for ellbow motor
+float ControlPiM3(float ref, float refOld, float angle, float angleOld) // control for ellbow motor
 {
-  // defintion of proportional gain 
-  float kP = 1.8;       // kP for downward movement
-  
-  if ((ref-angle) > 0)  // upwards
+  // defintion of proportional gain
+  float kP = 1.8; // kP for downward movement
+
+  if ((ref - angle) > 0) // upwards
   {
-    kP = 3.0;           // kP for upward movement
+    kP = 3.0; // kP for upward movement
   }
 
   // print proportional gain - only for debugging purposes
@@ -369,10 +350,10 @@ float ControlPiM3(float ref, float refOld, float angle, float angleOld)   // con
   return controlOut;
 }
 
-float ControlPiM1(float ref, float refOld, float angle, float angleOld)   // control for ellbow motor
+float ControlPiM1(float ref, float refOld, float angle, float angleOld) // control for ellbow motor
 {
-  // defintion of proportional gain 
-  float kP = 2;       // kP 
+  // defintion of proportional gain
+  float kP = 2; // kP
   float kI = 0.05;
   int satPos = 1; // values took over from Juan tbc if correct
   int satNeg = -1;
@@ -385,12 +366,12 @@ float ControlPiM1(float ref, float refOld, float angle, float angleOld)   // con
 
   float dI = kI * timeStep * (refOld - angleOld);
   if (_sat * dI > 0)
-    {
-        intPart = _iOld;
-    }
-    else
-    {
-        intPart = _iOld + dI;
+  {
+    intPart = _iOld;
+  }
+  else
+  {
+    intPart = _iOld + dI;
   }
   Serial.printf(">intPar_m1: %f \n", kI);
   // calculate proportional part = control output

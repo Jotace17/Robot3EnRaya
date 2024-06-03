@@ -5,3 +5,7 @@
 .vscode/ipch
 main.cpp
 test
+.vscode
+.DS_Store
+include
+src/Test_NewDriver.code-workspace
