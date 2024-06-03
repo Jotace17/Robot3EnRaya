@@ -123,38 +123,15 @@ if(m2){
     Serial.printf(">Control Out m2: %f  \n", ducy_m2);
 
     _oldAngle_m2 = currentAngle;         // update value of old angle 
+    /* limitation of duty cycle */
+    float ducyLimM2 =  SetDutyDeadZone(2, ducy_m2);
+    _m2->SetDuty(ducyLimM2);
 
     /* only for debugging purposes */
     Serial.printf(">Current Angle deg m2: %f\n", currentAngle);
     Serial.printf(">ducy: %.2f \t", ducy_m2);
     Serial.printf("_newRef: %f \n", _newRef_m2);
-
-    /* limitation of duty cycle */
-    /* to be cleaned up and put into function or into control */
-    if (abs(ducy_m2) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
-    {
-      _m2->SetDuty(0.0);
-    }
-    else if ((ducy_m2) < 0.15 && ducy_m2 > 0.0)
-    {
-      _m2->SetDuty(0.15);
-    }
-    else if ((ducy_m2) > -0.11 && ducy_m2 < -0.001)
-    {
-      _m2->SetDuty(-0.11);
-    }
-    else if ((ducy_m2) > 0.4)
-    {
-      _m2->SetDuty(0.4);
-    }
-    else if ((ducy_m2) < -0.4)
-    {
-      _m2->SetDuty(-0.4);
-    }
-    else
-    {
-      _m2->SetDuty(ducy_m2);
-    }
+    Serial.printf(">Limitated DuCy M2: %f \n", ducyLimM2);
   }
   else
   {
@@ -181,52 +158,26 @@ if(m2){
 }
 else if (m3){
   float currentAngle = angles[2];
-  Serial.printf(">currentAngle m3: %f \n", currentAngle);
-  if (abs(_newRef_m3 - currentAngle) > allowedError)   // control loop if angle difference is > allowed error
+  Serial.printf(">currentAngle m3: %f \n", angles[2]);
+  if (abs(_newRef_m3 - angles[2]) > allowedError)   // control loop if angle difference is > allowed error
   {
     /* calculation of duty cycle by control */
-    float ducy_m3 = ControlPiM3(_newRef_m3, _oldRef_m3, currentAngle, _oldAngle_m3);
-    _oldAngle_m3 = currentAngle;         // update value of old angle 
+    float ducy_m3 = ControlPiM3(_newRef_m3, _oldRef_m3, angles[2], _oldAngle_m3);
+    _oldAngle_m3 = angles[2];         // update value of old angle 
+    /* limitation of duty cycle */
+    float ducyLimM3 =  SetDutyDeadZone(3, ducy_m3);
+    _m3->SetDuty(ducyLimM3);
 
     /* only for debugging purposes */
-    float refdif = _newRef_m3 - currentAngle;
+    float refdif = _newRef_m3 - angles[2];
     Serial.printf(">refDif m3: %f\n", refdif);
     Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
     Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
-
-    float ducyLimM3 =  SetDutyDeadZone(3, ducy_m3);
-    _m3->SetDuty(ducyLimM3);
     Serial.printf(">Limitated DuCy M3: %f \n", ducyLimM3);
-    /* limitation of duty cycle */
-    /* to be cleaned up and put into function or into control */
-    /*if (abs(ducy_m3) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
-    {
-      _m3->SetDuty(0.0);
-    }
-    else if ((ducy_m3) < 0.15 && ducy_m3 > 0.0)
-    {
-      _m3->SetDuty(0.15);
-    }
-    else if ((ducy_m3) > -0.075 && ducy_m3 < -0.001)
-    {
-      _m3->SetDuty(-0.075);
-    }
-    else if ((ducy_m3) > 0.4)
-    {
-      _m3->SetDuty(0.4);
-    }
-    else if ((ducy_m3) < -0.4)
-    {
-      _m3->SetDuty(-0.4);
-    }
-    else
-    {
-      _m3->SetDuty(ducy_m3);
-    }*/
   }
   else
   {
-    /* stop motor and read actual angle */
+    /* stop motor and read actual angle -> is this really needed */
     _m3->SetDuty(0); 
     GetAngle(angles);
     currentAngle = angles[2];
