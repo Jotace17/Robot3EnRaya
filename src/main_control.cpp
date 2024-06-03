@@ -55,8 +55,8 @@ float _newRef_m2;
 float _newRef_m3;
 
 
-bool m2 = 1;
-bool m3 = 0;
+bool m2 = 0;
+bool m3 = 1;
 
 static int _first_time = 1;
 
@@ -69,6 +69,7 @@ float GetReference();
 float ControlPiM1(float, float, float, float);  // adaptive P control for arm/shoulder 
 float ControlPiM2(float, float, float, float);  // adaptive P control for arm/shoulder 
 float ControlPiM3(float, float, float, float);  // Pi control for forearm/ellbow
+float SetDutyDeadZone(int motor, float ducy);
 
 void setup()
 {
@@ -193,9 +194,12 @@ else if (m3){
     Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
     Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
 
+    float ducyLimM3 =  SetDutyDeadZone(3, ducy_m3);
+    _m3->SetDuty(ducyLimM3);
+    Serial.printf(">Limitated DuCy M3: %f \n", ducyLimM3);
     /* limitation of duty cycle */
     /* to be cleaned up and put into function or into control */
-    if (abs(ducy_m3) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
+    /*if (abs(ducy_m3) < 0.001) // motor 877-7174 is not moving with dutycycle lower than 0.11
     {
       _m3->SetDuty(0.0);
     }
@@ -218,7 +222,7 @@ else if (m3){
     else
     {
       _m3->SetDuty(ducy_m3);
-    }
+    }*/
   }
   else
   {
@@ -337,8 +341,6 @@ void GetAngle(float* angles)
 
   if (posBase != 0x80000000)
   {
-    //float angles[size];
-
     // Perform the multiplication and store the results in readAngle
     for (int i = 0; i < size; i++) {
       angles[i] = posAll[i] * 360.0f / 4096.0f;
@@ -463,4 +465,54 @@ float ControlPiM1(float ref, float refOld, float angle, float angleOld)   // con
   float controlOut = (kP * ((ref - angle) / 360)) + intPart;
   _iOld = intPart;
   return controlOut;
+}
+
+float SetDutyDeadZone(int motor, float ducy)
+{
+  float minLim = 0.001; // minimum duty cycle where it will not be set to 0
+  float maxLim = 0.4;   // maximum duty cycle which will be ever used
+  float ducyLim = 0;    // limitated duty cycle
+  float ducyMinUp;
+  float ducyMinDown;
+
+  switch (motor)
+  {
+  case 1: // base
+    // currently empty
+    break;
+  case 2: // shoulder
+    ducyMinUp = 0.15;
+    ducyMinDown = -0.11;
+    break;
+  case 3:
+    ducyMinUp = 0.15;
+    ducyMinDown = -0.075;
+    break;
+  }
+  if (abs(ducy) < minLim) // motor 877-7174 is not moving with dutycycle lower than 0.11
+  {
+    ducyLim = 0.0;
+  }
+  else if ((ducy) < ducyMinUp && ducy > minLim)
+  {
+    ducyLim = ducyMinUp;
+  }
+  else if ((ducy) > ducyMinDown && ducy < -minLim)
+  {
+    ducyLim = ducyMinDown;
+  }
+  else if ((ducy) > maxLim)
+  {
+    ducyLim = maxLim;
+  }
+  else if ((ducy) < -maxLim)
+  {
+    ducyLim = -maxLim;
+  }
+  else
+  {
+    ducyLim = ducy;
+  }
+
+  return ducyLim;
 }
