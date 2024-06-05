@@ -61,9 +61,9 @@ float _newRef_m1;
 float _newRef_m2;
 float _newRef_m3;
 
-bool m1 = 0;
+bool m1 = 1;
 bool m2 = 0;
-bool m3 = 1;
+bool m3 = 0;
 
 static int _first_time = 1;
 const float _dt = 0.01; // 10ms
@@ -98,7 +98,7 @@ void setup()
   /* timer initialization*/
   timer = timerBegin(0, 80, true);
   timerAttachInterrupt(timer, &timerInterrupt, true); // Attach the interrupt handling function
-  timerAlarmWrite(timer, 1000000 * _dt, true);        // Interrupt every 1 second
+  timerAlarmWrite(timer, 1000000 * _dt, true);        // Interrupt every 0.01 second
   timerAlarmEnable(timer);                            // Enable the alarm
 }
 
@@ -111,13 +111,14 @@ void loop()
     float ducy_m2;            // variable to store duty cycle for motor 2 (shoulder)
     float ducy_m3;            // variable to store duty cycle for motor 3 (ellbow)
     float refPos;             // variable for reference angle of control
-    float allowedError = 1.8; // variable to define allowed error of control
+    float allowedError = 1.0; // variable to define allowed error of control
+    float allowedErrorM1 = 1.0;
 
     if (_first_time) // only execute in first execution of loop - set initial reference angles
     {
-      _newRef_m1 = 162; // first reference for motor 2 - limits ca. 30° to 100°
+      _newRef_m1 = 200; // first reference for motor 2 - limits ca. 30° to 100°
       _newRef_m2 = 80;  // first reference for motor 2 - limits ca. 30° to 100°
-      _newRef_m3 = 160; // first reference for motor 3 - limits ca. 145 - 190°
+      _newRef_m3 = 155; // first reference for motor 3 - limits ca. 145 - 190°
       _first_time = 0;
     }
 
@@ -125,8 +126,8 @@ void loop()
 
     /* only for debugging purposes */
     Serial.printf(">A currentAngle m1: %.2f\n", (angles[0]));
-    Serial.printf(">A currentAngle m2: %.2f\n", (angles[1]));
-    Serial.printf(">A currentAngle m3: %.2f\n", (angles[2]));
+    //Serial.printf(">A currentAngle m2: %.2f\n", (angles[1]));
+    //Serial.printf(">A currentAngle m3: %.2f\n", (angles[2]));
     /* */
 
     if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2)// control loop for shoulder motor if angle difference is > allowed error
@@ -140,10 +141,10 @@ void loop()
       _m2->SetDuty(ducyLimM2);
 
       /* only for debugging purposes */
-      Serial.printf(">Current Angle m2: %f\n", angles[1]);
-      Serial.printf(">ducy m2: %.2f \n", ducy_m2);
-      Serial.printf("_newRef m2: %f \n", _newRef_m2);
-      Serial.printf(">Limitated DuCy M2: %f \n", ducyLimM2);
+      //Serial.printf(">Current Angle m2: %f\n", angles[1]);
+      //Serial.printf(">ducy m2: %.2f \n", ducy_m2);
+      //Serial.printf("_newRef m2: %f \n", _newRef_m2);
+      //Serial.printf(">Limitated DuCy M2: %f \n", ducyLimM2);
       /* */
     }
     else
@@ -151,7 +152,7 @@ void loop()
       /* stop motor and read new reference */
       _m2->SetDuty(0);
       GetReference(angles);
-      Serial.printf(">M2 deactivated - ducy m2:%f \n",0.0);
+      //Serial.printf(">M2 deactivated - ducy m2:%f \n",0.0);
     }
     if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3)// control loop for ellbow motor if angle difference is > allowed error
     {
@@ -165,11 +166,11 @@ void loop()
 
       /* only for debugging purposes */
       float refdif = _newRef_m3 - angles[2];
-      Serial.printf(">currentAngle m3: %f \n", angles[2]);
-      Serial.printf(">refDif m3: %f\n", refdif);
-      Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
-      Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
-      Serial.printf(">Limitated DuCy M3: %f \n", ducyLimM3);
+      //Serial.printf(">currentAngle m3: %f \n", angles[2]);
+      //Serial.printf(">refDif m3: %f\n", refdif);
+      //Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
+      //Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
+      //Serial.printf(">Limitated DuCy M3: %f \n", ducyLimM3);
       /* */
     }
     else
@@ -178,36 +179,36 @@ void loop()
       _m3->SetDuty(0);
       GetReference(angles);
       /* only for debugging purposes */
-      Serial.printf(">M3 deactivated - ducy m3: %f \n",0.0);
+      //Serial.printf(">M3 deactivated - ducy m3: %f \n",0.0);
     }
 
     if (m1)
     {
       /* only for debugging purposes */
       float refdif = _newRef_m1 - angles[0];
-      Serial.printf(">refDif m1: %.2f\n", refdif);
+      //Serial.printf(">refDif m1: %.2f\n", refdif);
       /* */
 
-      if (abs(_newRef_m1 - angles[0]) > allowedError) // control loop if angle difference is > allowed error
+      if (abs(_newRef_m1 - angles[0]) > allowedErrorM1) // control loop if angle difference is > allowed error
       {
         /* only for debugging purposes */
         float refdif = _newRef_m1 - angles[0];
-        Serial.printf(">refDif m1: %.2f\n", refdif);
+        //Serial.printf(">refDif m1: %.2f\n", refdif);
 
         /* calculation of duty cycle by control */
         float ducy_m1 = ControlPiM1(_newRef_m1, _oldRef_m1, angles[0], _oldAngle_m1);
         _oldAngle_m1 = angles[0]; // update value of old angle
 
         /* only for debugging purposes */
-        Serial.printf(">Current Angle deg m1: %f\n", angles[0]);
-        Serial.printf(">Previous Angle deg m1: %f\n", _oldAngle_m1);
-        Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
-        Serial.printf(">_newRef_m1: %f \n", _newRef_m1);
+        //Serial.printf(">Current Angle deg m1: %f\n", angles[0]);
+        //Serial.printf(">Previous Angle deg m1: %f\n", _oldAngle_m1);
+        //Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
+        //Serial.printf(">_newRef_m1: %f \n", _newRef_m1);
 
         float ducyLimM1 = SetDutyDeadZone(1, ducy_m1);
         _m1->SetDuty(ducyLimM1);
 
-        Serial.printf(">Ducylim M1: %f \n", ducyLimM1);
+        //Serial.printf(">Ducylim M1: %f \n", ducyLimM1);
       }
       else
       {
@@ -261,17 +262,17 @@ float GetReference(float *angles)
     if ((motorIndex == "m3"))
     {
       _newRef_m3 = refAngle;
-      Serial.printf("> new Ref m3: %f \n", _newRef_m3);
+      /*Serial.printf("> new Ref m3: %f \n", _newRef_m3);*/
     }
     else if (motorIndex == "m2")
     {
       _newRef_m2 = refAngle;
-      Serial.printf("> new Ref m2: %f \n", _newRef_m2);
+      /*Serial.printf("> new Ref m2: %f \n", _newRef_m2);*/
     }
     else if (motorIndex == "m1")
     {
       _newRef_m1 = refAngle;
-      Serial.printf("> new Ref m1: %f \n", _newRef_m1);
+      /*Serial.printf("> new Ref m1: %f \n", _newRef_m1);*/
     }
   }
 
@@ -314,18 +315,19 @@ float ControlPiM3(float ref, float refOld, float angle, float angleOld) // contr
 float ControlPiM1(float ref, float refOld, float angle, float angleOld) // control for ellbow motor
 {
   // defintion of proportional gain
-  float kP = 0.8; // kP
-  float kI = 0.0;
-  int satPos = 1; 
-  int satNeg = -1;
+  float kP = 0.018; // kP
+  float kI = 0.15;
+  float sat = 1.0;
+  float satPos = 0.20; 
+  float satNeg = -0.20;
 
   float intPart;
 
-  float dI = kI * _dt * (refOld - angleOld);
-  float satmult = _sat * dI;
-  Serial.printf(">satmult: %f \n", satmult);
-  Serial.printf(">dI: %f \n", dI);
-  if (_sat * dI > 0)
+  float dI = kI * _dt * (ref - angle);
+  //float satmult = _sat * dI;
+  //Serial.printf(">satmult: %f \n", satmult);
+  //Serial.printf("> AntiWindUp: %f \n", (abs((refOld - angleOld) * kI)));
+  if (abs((refOld - angleOld) * kI) > sat)
   {
     intPart = _iOld;
   }
@@ -335,33 +337,33 @@ float ControlPiM1(float ref, float refOld, float angle, float angleOld) // contr
   }
   // calculate proportional part 
   /* only for debugging / calibration purposes */
-  float controlOut_i = (kP * ((ref - angle) / 360)) + intPart;
-  Serial.printf(">Control Out I: %f \n", controlOut_i);
-  Serial.printf(">Part I I: %f \n", intPart);
+  //float controlOut_i = (kP * ((ref - angle) / 360)) + intPart;
+  //Serial.printf(">Control Out I: %f \n", controlOut_i);
+  //Serial.printf(">Part I I: %f \n", intPart);
   /* */
-  float controlOut = (kP * ((ref - angle) / 360)) + intPart;
+  float controlOut = (kP * ((ref - angle))) + intPart;
+  Serial.printf(">Control Out Raw: %f \n", controlOut);
 
     // limitation of output signal
     if (controlOut > satPos)
     {
         controlOut = satPos;
-        _sat = 1;
     }
     else if (controlOut < satNeg)
     {
         controlOut = satNeg;
-        _sat = -1;
     }
-    else
-    {
+    /*else
+    {*/
         _iOld = intPart; // update integral for next step
-    }
+    //}
     _oldRef_m1 = _newRef_m1; // update value of previous reference - tbc if it is the right place here??
     
     /* only for debugging purposes */
-    Serial.printf(">Control Out m1: %f \n", controlOut);
-    Serial.printf(">_oldRef_m1: %f \n", _oldRef_m1);
-    Serial.printf(">_sat: %i \n", _sat);
+    //Serial.printf(">Control Out m1: %f \n", controlOut);
+    //Serial.printf(">Current I part: %f\n", intPart);
+    //Serial.printf(">_oldRef_m1: %f \n", _oldRef_m1);
+    //Serial.printf(">_sat: %i \n", _sat);
   return controlOut;
 }
 
@@ -376,8 +378,8 @@ float SetDutyDeadZone(int motor, float ducy)  /* limitation of duty cycle and im
   switch (motor)
   {
   case 1: // base
-    ducyMinUp = 0.12;
-    ducyMinDown = -0.12;
+    ducyMinUp = 0.002;
+    ducyMinDown = -0.002;
     break;
   case 2: // shoulder
     ducyMinUp = 0.15;
