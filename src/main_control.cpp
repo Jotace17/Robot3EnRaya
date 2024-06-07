@@ -65,7 +65,6 @@ bool m1 = 1;
 bool m2 = 0;
 bool m3 = 0;
 
-static int _first_time = 1;
 const float _dt = 0.01; // 10ms
 
 // definition of global variables encoder
@@ -95,6 +94,11 @@ void setup()
   _m3 = new AlMar::Esp32::Driver_L298n(PIN_M3_EN, PIN_M3_IN1, PIN_M3_IN2, 200);
   _m3->begin();
 
+  /* set initial reference values */
+  _newRef_m1 = 200; // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m2 = 80;  // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m3 = 155; // first reference for motor 3 - limits ca. 145 - 190°
+
   /* timer initialization*/
   timer = timerBegin(0, 80, true);
   timerAttachInterrupt(timer, &timerInterrupt, true); // Attach the interrupt handling function
@@ -106,6 +110,9 @@ void loop()
 {
   if (_expired) // only run when interrupt is calling function
   {
+    unsigned long runTime;
+    unsigned long startTime;
+    unsigned long endTime;
     // definition of local variables
     float angles[3];          // array for read angle values
     float ducy_m2;            // variable to store duty cycle for motor 2 (shoulder)
@@ -114,14 +121,7 @@ void loop()
     float allowedError = 1.0; // variable to define allowed error of control
     float allowedErrorM1 = 1.0;
 
-    if (_first_time) // only execute in first execution of loop - set initial reference angles
-    {
-      _newRef_m1 = 200; // first reference for motor 2 - limits ca. 30° to 100°
-      _newRef_m2 = 80;  // first reference for motor 2 - limits ca. 30° to 100°
-      _newRef_m3 = 155; // first reference for motor 3 - limits ca. 145 - 190°
-      _first_time = 0;
-    }
-
+    startTime = millis();
     GetAngle(angles); // read all three angles from the encoders
 
     /* only for debugging purposes */
@@ -205,8 +205,8 @@ void loop()
         //Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
         //Serial.printf(">_newRef_m1: %f \n", _newRef_m1);
 
-        float ducyLimM1 = SetDutyDeadZone(1, ducy_m1);
-        _m1->SetDuty(ducyLimM1);
+        //float ducyLimM1 = SetDutyDeadZone(1, ducy_m1);  // limitation already in control 
+        _m1->SetDuty(ducy_m1);
 
         //Serial.printf(">Ducylim M1: %f \n", ducyLimM1);
       }
@@ -222,6 +222,9 @@ void loop()
 
     /* set flag to false until timer/interrupt sets it to true again */
     _expired = false;
+    endTime = millis();
+    runTime = endTime - startTime;
+    Serial.printf(">Program Runtime: %lu \n", runTime);
   }
 }
 
