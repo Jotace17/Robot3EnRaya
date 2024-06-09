@@ -6,11 +6,18 @@
 #include <cmath>
 #include <string>
 #include <time.h>
+#include <limits.h>
 
 int _row, _col, _pos;
 bool _dificultad = false;
 
 int charToInt(char key);
+
+struct Move {
+    int row, col;
+};
+
+Move findBestMove(char board[Dimension][Dimension]);
 
 void Game::CreateBoard()
 {
@@ -42,7 +49,7 @@ void Game::showBoard()
     }
 }
 
-void Game::PlayerTurn(Player& player)
+int Game::PlayerTurn(Player& player)
 {
     // position of a cell given by the player
     int position = -1;
@@ -94,9 +101,10 @@ void Game::PlayerTurn(Player& player)
         count++;
     }
     showBoard();
+    return position;
 }
 
-void Game::MachineTurn()
+int Game::MachineTurn()
 {
     switch (_dificultad)
     {
@@ -119,13 +127,26 @@ void Game::MachineTurn()
         }
         // calling the showBoard() function
         showBoard();
+
         break;
 
     case ModoDificil:
-        Serial.println("mamaste");
+        //Serial.printf("Modo dificil: %d \n" , _dificultad);
+        Move bestMove = findBestMove(gameboard);
+            if (bestMove.row != -1 && bestMove.col != -1) {
+                gameboard[bestMove.row][bestMove.col] = 'O';
+                // calculatin the position (int) from matrix cell [x][y]
+                _pos = bestMove.row  * 3 + bestMove.col + 1;
+                Serial.printf("Marked at position: %d\n", _pos);
+                // incrementing the count
+                count++;
+            }
+
+        showBoard();
         break;
     }
 
+    return _pos;
 }
 
 bool Game::ChangeDificulty()
@@ -203,3 +224,117 @@ int charToInt(char key) {
         return -1;  // Valor de error o manejarlo como prefieras
     }
 }
+
+
+// Funciones para Minimax
+int evaluate(char board[Dimension][Dimension]) {
+    for (int row = 0; row < Dimension; row++) {
+        if (board[row][0] == board[row][1] && board[row][1] == board[row][2]) {
+            if (board[row][0] == 'O') return +10;
+            else if (board[row][0] == 'X') return -10;
+        }
+    }
+
+    for (int col = 0; col < Dimension; col++) {
+        if (board[0][col] == board[1][col] && board[1][col] == board[2][col]) {
+            if (board[0][col] == 'O') return +10;
+            else if (board[0][col] == 'X') return -10;
+        }
+    }
+
+    if (board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
+        if (board[0][0] == 'O') return +10;
+        else if (board[0][0] == 'X') return -10;
+    }
+
+    if (board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
+        if (board[0][2] == 'O') return +10;
+        else if (board[0][2] == 'X') return -10;
+    }
+
+    return 0;
+}
+
+bool isMovesLeft(char board[Dimension][Dimension]) { // count???
+    for (int i = 0; i < Dimension; i++)
+        for (int j = 0; j < Dimension; j++)
+            if (board[i][j] == ' ')
+                return true;
+    return false;
+}
+
+int minimax(char board[Dimension][Dimension], int depth, bool isMax) {
+    int score = evaluate(board);
+
+    if (score == 10) return score - depth;
+    if (score == -10) return score + depth;
+    if (!isMovesLeft(board)) return 0;  //count???
+
+    if (isMax) {
+        int best = -1000;
+        for (int i = 0; i < Dimension; i++) {
+            for (int j = 0; j < Dimension; j++) {
+                if (board[i][j] == ' ') {
+                    board[i][j] = 'O';
+                    best = std::max(best, minimax(board, depth + 1, !isMax));
+                    board[i][j] = ' ';
+                }
+            }
+        }
+        return best;
+    } else {
+        int best = 1000;
+        for (int i = 0; i < Dimension; i++) {
+            for (int j = 0; j < Dimension; j++) {
+                if (board[i][j] == ' ') {
+                    board[i][j] = 'X';
+                    best = std::min(best, minimax(board, depth + 1, !isMax));
+                    board[i][j] = ' ';
+                }
+            }
+        }
+        return best;
+    }
+}
+
+Move findBestMove(char board[Dimension][Dimension]) {
+    int bestVal = -1000;
+    Move bestMove;
+    bestMove.row = -1;
+    bestMove.col = -1;
+
+    for (int i = 0; i < Dimension; i++) {
+        for (int j = 0; j < Dimension; j++) {
+            if (board[i][j] == ' ') {
+                board[i][j] = 'O';
+                int moveVal = minimax(board, 0, false);
+                board[i][j] = ' ';
+                if (moveVal > bestVal) {
+                    bestMove.row = i;
+                    bestMove.col = j;
+                    bestVal = moveVal;
+                }
+            }
+        }
+    }
+    return bestMove;
+}
+
+// // Modificar el turno del AI para usar Minimax en el modo difícil
+// int Game::PlayerTurn(Player& player) {
+//     if (player.isAI()) {
+//         if (_dificultad) {  // Modo difícil
+//             Move bestMove = findBestMove(gameboard);
+//             if (bestMove.row != -1 && bestMove.col != -1) {
+//                 gameboard[bestMove.row][bestMove.col] = 'O';
+//             }
+//         } else {  // Modo fácil
+//             // Código existente para el turno del AI en modo fácil
+//         }
+//     } else {
+//         // Código existente para el turno del jugador humano
+//     }
+//     showBoard();
+//     return 0;
+// }
+

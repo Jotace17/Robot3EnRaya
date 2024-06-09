@@ -6,7 +6,29 @@
 #include <cmath>
 #include <string>
 #include "TicTacToe.h"
- 
+
+#include "Trayectorias.h"
+
+//######################################################### TRAYECTORIAS
+int position;
+float coord_z = 0.5;
+
+const int POS = 9; // numero de posiciones en el tablero (19)
+const int COORD = 3; // numero de coordenadas (x,y,z)
+float gamePos[POS][COORD] = 
+{
+  {1, 1, coord_z}, // Posicion de inicio de X, 1-5 ↓
+  {2, 2, coord_z},
+  {3, 3, coord_z},
+  {4, 4, coord_z},
+  {5, 5, coord_z},
+  {6, 6, coord_z},
+  {7, 7, coord_z},
+  {8, 8, coord_z},
+  {9, 9, coord_z},
+  
+  
+};
 //######################################################### KEYPAD
 const uint8_t ROWS = 4; // Cuatro filas
 const uint8_t COLS = 4; // Cuatro columnas
@@ -25,7 +47,8 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 //######################################################### LEDS
 
-int leds[] = {11, 10, 9, 46, 3}; // LED 1 a 5 conectados a los pines 11...
+//int leds[] = {11, 10, 9, 46, 3}; // LED 1 a 5 conectados a los pines 11...
+int leds[] = {3, 46, 9, 10, 11}; // LED 1 a 5 conectados a los pines 11...
 unsigned long blinkTimes[5] = {0, 0, 0, 0, 0}; // Array to store the last blink times for each LED  
 
 //######################################################### BUTTONS
@@ -98,7 +121,7 @@ void loop() {
         {
           // Player turn
           digitalWrite(leds[2], HIGH); //ENCIENDE LED 3 - TURNO DE LA X
-          game->PlayerTurn(player);
+          position = game->PlayerTurn(player);
           digitalWrite(leds[2], LOW); //APAGA LED 3 - TURNO DE LA X
           // Check if player 1 has won the game or draw
           fin = game->CheckWin();
@@ -109,7 +132,7 @@ void loop() {
           // Machine turn
           digitalWrite(leds[3], HIGH); //ENCIENDE LED 4 - TURNO DE LA O (Maquina)
           delay(2000); //######################################################## TEMPORAL
-          game->MachineTurn();
+          position = game->MachineTurn();
           digitalWrite(leds[3], LOW); //APAGA LED 4 - TURNO DE LA O (Maquina)
           // Check if any player won the game
           fin = game->CheckWin();
@@ -146,9 +169,11 @@ void loop() {
         // iterate until a winner or draw is reached
         while (flag)
         {    
+          
           // player 1 turn
           digitalWrite(leds[2], HIGH); //ENCIENDE LED 3 - TURNO DE LA X
-          game->PlayerTurn(player);
+          position = game->PlayerTurn(player);
+
           digitalWrite(leds[2], LOW); //ENCIENDE LED 3 - TURNO DE LA X
           fin = game->CheckWin(); // Check if there is a winner or a draw in the match
           if (fin != ' ')
@@ -158,7 +183,7 @@ void loop() {
 
           // player 2 turn
           digitalWrite(leds[3], HIGH); //ENCIENDE LED 4 - TURNO DE LA O
-          game->PlayerTurn(player2);
+          position = game->PlayerTurn(player2);
           digitalWrite(leds[3], LOW); //APAGA LED 4 - TURNO DE LA O
           fin = game->CheckWin();// Check if there is a winner or a draw in the match
           // Conditions to check the winner or draw in the match

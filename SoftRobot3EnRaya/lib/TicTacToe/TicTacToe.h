@@ -4,11 +4,9 @@
 #include <iostream>
 #include "Keypad.h"
 
-
 #define Dimension 3
 #define ModoFacil false
 #define ModoDificil true
-
 
 extern Keypad keypad; 
 extern const int pinTurnButton;
@@ -49,14 +47,13 @@ public:
     void showBoard();
 
     // PlayTurn function with player object as parameter
-    void PlayerTurn(Player& player);
+    int PlayerTurn(Player& player);
 
     // function MachineTurn
-    void MachineTurn();
+    int MachineTurn();
 
     int RandomPos();
     char CheckWin();
     bool ChangeDificulty();
 
 };
-
