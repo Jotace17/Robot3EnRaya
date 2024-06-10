@@ -62,8 +62,8 @@ float _newRef_m2;
 float _newRef_m3;
 
 bool m1 = 1;
-bool m2 = 0;
-bool m3 = 0;
+bool m2 = 1;
+bool m3 = 1;
 
 const float _dt = 0.01; // 10ms
 
@@ -95,9 +95,9 @@ void setup()
   _m3->begin();
 
   /* set initial reference values */
-  _newRef_m1 = 200; // first reference for motor 2 - limits ca. 30° to 100°
-  _newRef_m2 = 80;  // first reference for motor 2 - limits ca. 30° to 100°
-  _newRef_m3 = 155; // first reference for motor 3 - limits ca. 145 - 190°
+  _newRef_m1 = 172; // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m2 = 94;  // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m3 = 188; // first reference for motor 3 - limits ca. 145 - 190°
 
   /* timer initialization*/
   timer = timerBegin(0, 80, true);
