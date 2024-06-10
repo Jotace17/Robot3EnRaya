@@ -2,6 +2,9 @@
 #include "../lib/AlMar_ESP32_Driver_L298n.h"
 #include "../lib/AlMar_ESP32_Driver_L298n.cpp"
 #include "../lib/ALMar_ESP32_EncoderATM203_Spi2.cpp"
+#include <iostream>
+#include <cmath>
+#include <vector>
 
 // #include "../lib/PMEC_E2_Control.h"
 
@@ -28,6 +31,15 @@
 #define PIN_MOSI 11 // 35 // 11 for SPI3
 
 #define N_MOTORS 3 // 35 // 11 for SPI3
+
+// definition of constants for cinematics functions
+#define L_ARM1 300
+#define L_ARM2 210
+
+#define X_A 0
+#define Y_A 0
+
+using namespace std;
 
 // Define pins
 int cs_pins[] = {PIN_CS_M1, PIN_CS_M2, PIN_CS_M3};
@@ -77,6 +89,7 @@ float ControlPiM1(float, float, float, float); // adaptive P control for arm/sho
 float ControlPiM2(float, float, float, float); // adaptive P control for arm/shoulder
 float ControlPiM3(float, float, float, float); // Pi control for forearm/ellbow
 float SetDutyDeadZone(int motor, float ducy);
+vector<float> KinetInver(const float posx, const float posy, const float posz);
 
 void setup()
 {
@@ -120,14 +133,27 @@ void loop()
     float refPos;             // variable for reference angle of control
     float allowedError = 1.0; // variable to define allowed error of control
     float allowedErrorM1 = 1.0;
-
+    vector<float> q;
+    //vector<float> Pos = {380,0,145};  // position 5 of board, 130mm for height of gripper
+    //vector<float> Pos = {419.25,-39.25,145}; //position 9
+    //vector<float> Pos = {340.75,39.25,145}; //1
+    //vector<float> Pos = {380,-39.25,145}; //6
+    vector<float> Pos = {419.25,0,145}; //8
+    //vector<float> Pos = {340.75,0,145}; //2
     startTime = millis();
     GetAngle(angles); // read all three angles from the encoders
 
     /* only for debugging purposes */
     Serial.printf(">A currentAngle m1: %.2f\n", (angles[0]));
-    //Serial.printf(">A currentAngle m2: %.2f\n", (angles[1]));
-    //Serial.printf(">A currentAngle m3: %.2f\n", (angles[2]));
+    Serial.printf(">A currentAngle m2: %.2f\n", (angles[1]));
+    Serial.printf(">A currentAngle m3: %.2f\n", (angles[2]));
+    /* */
+    q = KinetInver(Pos[0], Pos[1], Pos[2]);
+
+    /* only for debugging purposes */
+    Serial.printf(">angulo m1: %.2f\n", (q[0]));
+    Serial.printf(">angulo m2: %.2f\n", (q[1]));
+    Serial.printf(">angulo m3: %.2f\n", (q[2]));
     /* */
 
     if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2)// control loop for shoulder motor if angle difference is > allowed error
@@ -420,4 +446,71 @@ float SetDutyDeadZone(int motor, float ducy)  /* limitation of duty cycle and im
   }
 
   return ducyLim;
+}
+
+vector<float> KinetDir(const float q1, const float q2, const float q3)
+{
+    vector<float> Pos;
+
+    float r;
+
+    float x, y, z;
+
+    r = L_ARM1*cos(q2) + L_ARM2*cos(q3-q2);
+
+    cout << "La distancia r es : " << r << endl;
+
+    x = r*sin(q1);
+    y = r*cos(q1);
+    z = L_ARM1*sin(q2) + L_ARM2*sin(q2-q3);
+
+    Pos = {x, y, z};
+
+    cout << "El valor de x es : " << x << endl;
+    cout << "El valor de y es : " << y << endl;
+    cout << "El valor de z es : " << z << endl;
+
+    return Pos;
+}// Fin de la funcion Kinet_Dir()
+
+
+vector<float> KinetInver(const float posx, const float posy, const float posz)
+{
+    vector<float> angleCin;
+
+    float q0 = 0, q1 = 0, q2 = 0;
+
+
+    q0 = atan2(posx,posy);
+
+    float r = sqrt(pow(posx,2) + pow(posy,2));
+
+    float lg = sqrt(pow(posz,2) + pow(r,2));
+
+    float beta = acos((pow(L_ARM1,2) + pow(L_ARM2,2) - pow(r,2) - pow(posz,2))/(2*L_ARM1*L_ARM2));
+
+    //q2 = M_PI - beta;
+    q2 = M_PI + beta;
+
+    float tau = acos(r/lg);
+
+    float gamma = acos((pow(L_ARM2,2) + pow(lg,2) - pow(L_ARM1,2))/(2*L_ARM2*lg));
+
+    float alpha = M_PI - gamma - beta;
+
+    q1 = tau + alpha;
+
+    // conversion to degrees
+    q0 = q0*(180.0/M_PI) -90.0;
+    q1 = 1.31 * (q1*(180.0/M_PI) - 50.89);
+    q2 = 0.43 * (q2*(180.0/M_PI) - 284.4);
+
+    // conversion to degrees
+    q0 = q0 + 163.0;
+    q1 = q1 + 55.8;
+    q2 = q2 + 155.6;
+
+    angleCin = {q0, q1, q2};
+
+    return angleCin;
 }
