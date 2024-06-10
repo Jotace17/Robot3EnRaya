@@ -87,7 +87,7 @@ void GetAngle(float *angles);
 float GetReference(float *angles);
 float ControlPiM1(float, float, float, float); // adaptive P control for arm/shoulder
 float ControlPiM2(float, float, float, float); // adaptive P control for arm/shoulder
-float ControlPiM3(float, float, float, float); // Pi control for forearm/ellbow
+float ControlPiM3(float, float);               // Pi control for forearm/ellbow
 float SetDutyDeadZone(int motor, float ducy);
 vector<float> KinetInver(const float posx, const float posy, const float posz);
 
@@ -134,12 +134,12 @@ void loop()
     float allowedError = 1.0; // variable to define allowed error of control
     float allowedErrorM1 = 1.0;
     vector<float> q;
-    //vector<float> Pos = {380,0,145};  // position 5 of board, 130mm for height of gripper
-    //vector<float> Pos = {419.25,-39.25,145}; //position 9
-    //vector<float> Pos = {340.75,39.25,145}; //1
-    //vector<float> Pos = {380,-39.25,145}; //6
-    vector<float> Pos = {419.25,0,145}; //8
-    //vector<float> Pos = {340.75,0,145}; //2
+    // vector<float> Pos = {380,0,145};  // position 5 of board, 130mm for height of gripper
+    // vector<float> Pos = {419.25,-39.25,145}; //position 9
+    // vector<float> Pos = {340.75,39.25,145}; //1
+    // vector<float> Pos = {380,-39.25,145}; //6
+    vector<float> Pos = {419.25, 0, 145}; // 8
+    // vector<float> Pos = {340.75,0,145}; //2
     startTime = millis();
     GetAngle(angles); // read all three angles from the encoders
 
@@ -148,6 +148,8 @@ void loop()
     Serial.printf(">A currentAngle m2: %.2f\n", (angles[1]));
     Serial.printf(">A currentAngle m3: %.2f\n", (angles[2]));
     /* */
+
+    /* call of inverse cinematics to calculate reference angles for caluclated point */
     q = KinetInver(Pos[0], Pos[1], Pos[2]);
 
     /* only for debugging purposes */
@@ -156,7 +158,7 @@ void loop()
     Serial.printf(">angulo m3: %.2f\n", (q[2]));
     /* */
 
-    if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2)// control loop for shoulder motor if angle difference is > allowed error
+    if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2) // control loop for shoulder motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
       float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef_m2, angles[1], _oldAngle_m2);
@@ -167,10 +169,10 @@ void loop()
       _m2->SetDuty(ducyLimM2);
 
       /* only for debugging purposes */
-      //Serial.printf(">Current Angle m2: %f\n", angles[1]);
-      //Serial.printf(">ducy m2: %.2f \n", ducy_m2);
-      //Serial.printf("_newRef m2: %f \n", _newRef_m2);
-      //Serial.printf(">Limitated DuCy M2: %f \n", ducyLimM2);
+      // Serial.printf(">Current Angle m2: %f\n", angles[1]);
+      // Serial.printf(">ducy m2: %.2f \n", ducy_m2);
+      // Serial.printf("_newRef m2: %f \n", _newRef_m2);
+      // Serial.printf(">Limitated DuCy M2: %f \n", ducyLimM2);
       /* */
     }
     else
@@ -178,12 +180,11 @@ void loop()
       /* stop motor and read new reference */
       _m2->SetDuty(0);
       GetReference(angles);
-      //Serial.printf(">M2 deactivated - ducy m2:%f \n",0.0);
     }
-    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3)// control loop for ellbow motor if angle difference is > allowed error
+    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3) // control loop for ellbow motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
-      float ducy_m3 = ControlPiM3(_newRef_m3, _oldRef_m3, angles[2], _oldAngle_m3);
+      float ducy_m3 = ControlPiM3(_newRef_m3, angles[2]);
       _oldAngle_m3 = angles[2]; // update value of old angle
 
       /* limitation of duty cycle */
@@ -192,11 +193,11 @@ void loop()
 
       /* only for debugging purposes */
       float refdif = _newRef_m3 - angles[2];
-      //Serial.printf(">currentAngle m3: %f \n", angles[2]);
-      //Serial.printf(">refDif m3: %f\n", refdif);
-      //Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
-      //Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
-      //Serial.printf(">Limitated DuCy M3: %f \n", ducyLimM3);
+      // Serial.printf(">currentAngle m3: %f \n", angles[2]);
+      // Serial.printf(">refDif m3: %f\n", refdif);
+      // Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
+      // Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
+      // Serial.printf(">Limitated DuCy M3: %f \n", ducyLimM3);
       /* */
     }
     else
@@ -205,36 +206,36 @@ void loop()
       _m3->SetDuty(0);
       GetReference(angles);
       /* only for debugging purposes */
-      //Serial.printf(">M3 deactivated - ducy m3: %f \n",0.0);
+      // Serial.printf(">M3 deactivated - ducy m3: %f \n",0.0);
     }
 
     if (m1)
     {
       /* only for debugging purposes */
       float refdif = _newRef_m1 - angles[0];
-      //Serial.printf(">refDif m1: %.2f\n", refdif);
+      // Serial.printf(">refDif m1: %.2f\n", refdif);
       /* */
 
       if (abs(_newRef_m1 - angles[0]) > allowedErrorM1) // control loop if angle difference is > allowed error
       {
         /* only for debugging purposes */
         float refdif = _newRef_m1 - angles[0];
-        //Serial.printf(">refDif m1: %.2f\n", refdif);
+        // Serial.printf(">refDif m1: %.2f\n", refdif);
 
         /* calculation of duty cycle by control */
         float ducy_m1 = ControlPiM1(_newRef_m1, _oldRef_m1, angles[0], _oldAngle_m1);
         _oldAngle_m1 = angles[0]; // update value of old angle
 
         /* only for debugging purposes */
-        //Serial.printf(">Current Angle deg m1: %f\n", angles[0]);
-        //Serial.printf(">Previous Angle deg m1: %f\n", _oldAngle_m1);
-        //Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
-        //Serial.printf(">_newRef_m1: %f \n", _newRef_m1);
+        // Serial.printf(">Current Angle deg m1: %f\n", angles[0]);
+        // Serial.printf(">Previous Angle deg m1: %f\n", _oldAngle_m1);
+        // Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
+        // Serial.printf(">_newRef_m1: %f \n", _newRef_m1);
 
-        //float ducyLimM1 = SetDutyDeadZone(1, ducy_m1);  // limitation already in control 
+        // float ducyLimM1 = SetDutyDeadZone(1, ducy_m1);  // limitation already in control
         _m1->SetDuty(ducy_m1);
 
-        //Serial.printf(">Ducylim M1: %f \n", ducyLimM1);
+        // Serial.printf(">Ducylim M1: %f \n", ducyLimM1);
       }
       else
       {
@@ -291,17 +292,14 @@ float GetReference(float *angles)
     if ((motorIndex == "m3"))
     {
       _newRef_m3 = refAngle;
-      /*Serial.printf("> new Ref m3: %f \n", _newRef_m3);*/
     }
     else if (motorIndex == "m2")
     {
       _newRef_m2 = refAngle;
-      /*Serial.printf("> new Ref m2: %f \n", _newRef_m2);*/
     }
     else if (motorIndex == "m1")
     {
       _newRef_m1 = refAngle;
-      /*Serial.printf("> new Ref m1: %f \n", _newRef_m1);*/
     }
   }
 
@@ -325,7 +323,7 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
   return controlOut;
 }
 
-float ControlPiM3(float ref, float refOld, float angle, float angleOld) // control for ellbow motor
+float ControlPiM3(float ref, float angle) // control for ellbow motor
 {
   // defintion of proportional gain
   float kP = 1.8; // kP for downward movement
@@ -347,15 +345,15 @@ float ControlPiM1(float ref, float refOld, float angle, float angleOld) // contr
   float kP = 0.018; // kP
   float kI = 0.15;
   float sat = 1.0;
-  float satPos = 0.20; 
+  float satPos = 0.20;
   float satNeg = -0.20;
 
   float intPart;
 
   float dI = kI * _dt * (ref - angle);
-  //float satmult = _sat * dI;
-  //Serial.printf(">satmult: %f \n", satmult);
-  //Serial.printf("> AntiWindUp: %f \n", (abs((refOld - angleOld) * kI)));
+  // float satmult = _sat * dI;
+  // Serial.printf(">satmult: %f \n", satmult);
+  // Serial.printf("> AntiWindUp: %f \n", (abs((refOld - angleOld) * kI)));
   if (abs((refOld - angleOld) * kI) > sat)
   {
     intPart = _iOld;
@@ -364,52 +362,48 @@ float ControlPiM1(float ref, float refOld, float angle, float angleOld) // contr
   {
     intPart = _iOld + dI;
   }
-  // calculate proportional part 
+  // calculate proportional part
   /* only for debugging / calibration purposes */
-  //float controlOut_i = (kP * ((ref - angle) / 360)) + intPart;
-  //Serial.printf(">Control Out I: %f \n", controlOut_i);
-  //Serial.printf(">Part I I: %f \n", intPart);
+  // float controlOut_i = (kP * ((ref - angle) / 360)) + intPart;
+  // Serial.printf(">Control Out I: %f \n", controlOut_i);
+  // Serial.printf(">Part I I: %f \n", intPart);
   /* */
   float controlOut = (kP * ((ref - angle))) + intPart;
   Serial.printf(">Control Out Raw: %f \n", controlOut);
 
-    // limitation of output signal
-    if (controlOut > satPos)
-    {
-        controlOut = satPos;
-    }
-    else if (controlOut < satNeg)
-    {
-        controlOut = satNeg;
-    }
-    /*else
-    {*/
-        _iOld = intPart; // update integral for next step
-    //}
-    _oldRef_m1 = _newRef_m1; // update value of previous reference - tbc if it is the right place here??
-    
-    /* only for debugging purposes */
-    //Serial.printf(">Control Out m1: %f \n", controlOut);
-    //Serial.printf(">Current I part: %f\n", intPart);
-    //Serial.printf(">_oldRef_m1: %f \n", _oldRef_m1);
-    //Serial.printf(">_sat: %i \n", _sat);
+  // limitation of output signal
+  if (controlOut > satPos)
+  {
+    controlOut = satPos;
+  }
+  else if (controlOut < satNeg)
+  {
+    controlOut = satNeg;
+  }
+  /*else
+  {*/
+  _iOld = intPart; // update integral for next step
+  //}
+  _oldRef_m1 = _newRef_m1; // update value of previous reference - tbc if it is the right place here??
+
+  /* only for debugging purposes */
+  // Serial.printf(">Control Out m1: %f \n", controlOut);
+  // Serial.printf(">Current I part: %f\n", intPart);
+  // Serial.printf(">_oldRef_m1: %f \n", _oldRef_m1);
+  // Serial.printf(">_sat: %i \n", _sat);
   return controlOut;
 }
 
-float SetDutyDeadZone(int motor, float ducy)  /* limitation of duty cycle and implementation of dead zone for each motor */
+float SetDutyDeadZone(int motor, float ducy) /* limitation of duty cycle and implementation of dead zone for each motor */
 {
   float minLim = 0.001; // minimum duty cycle where it will not be set to 0
   float maxLim = 0.4;   // maximum duty cycle which will be ever used
-  float ducyLim = 0.0;    // limitated duty cycle
+  float ducyLim = 0.0;  // limitated duty cycle
   float ducyMinUp;
   float ducyMinDown;
 
   switch (motor)
   {
-  case 1: // base
-    ducyMinUp = 0.002;
-    ducyMinDown = -0.002;
-    break;
   case 2: // shoulder
     ducyMinUp = 0.15;
     ducyMinDown = -0.11;
@@ -418,9 +412,12 @@ float SetDutyDeadZone(int motor, float ducy)  /* limitation of duty cycle and im
     ducyMinUp = 0.15;
     ducyMinDown = -0.075;
     break;
+  default:
+    // do nothing
+    break;
   }
 
-  if (abs(ducy) < minLim) 
+  if (abs(ducy) < minLim)
   {
     ducyLim = 0.0;
   }
@@ -450,67 +447,60 @@ float SetDutyDeadZone(int motor, float ducy)  /* limitation of duty cycle and im
 
 vector<float> KinetDir(const float q1, const float q2, const float q3)
 {
-    vector<float> Pos;
+  // definition of local variables
+  vector<float> Pos;
+  float r;
+  float x, y, z;
 
-    float r;
+  r = L_ARM1 * cos(q2) + L_ARM2 * cos(q3 - q2);
 
-    float x, y, z;
+  cout << "La distancia r es : " << r << endl;
 
-    r = L_ARM1*cos(q2) + L_ARM2*cos(q3-q2);
+  x = r * sin(q1);
+  y = r * cos(q1);
+  z = L_ARM1 * sin(q2) + L_ARM2 * sin(q2 - q3);
 
-    cout << "La distancia r es : " << r << endl;
+  Pos = {x, y, z};
 
-    x = r*sin(q1);
-    y = r*cos(q1);
-    z = L_ARM1*sin(q2) + L_ARM2*sin(q2-q3);
+  cout << "El valor de x es : " << x << endl;
+  cout << "El valor de y es : " << y << endl;
+  cout << "El valor de z es : " << z << endl;
 
-    Pos = {x, y, z};
-
-    cout << "El valor de x es : " << x << endl;
-    cout << "El valor de y es : " << y << endl;
-    cout << "El valor de z es : " << z << endl;
-
-    return Pos;
-}// Fin de la funcion Kinet_Dir()
-
+  return Pos;
+} // Fin de la funcion Kinet_Dir()
 
 vector<float> KinetInver(const float posx, const float posy, const float posz)
 {
-    vector<float> angleCin;
+  // definition of local variables
+  vector<float> angleCin;
+  float q0 = 0, q1 = 0, q2 = 0;
 
-    float q0 = 0, q1 = 0, q2 = 0;
+  // calculation of inverse cinematics
+  float r = sqrt(pow(posx, 2) + pow(posy, 2));
+  float lg = sqrt(pow(posz, 2) + pow(r, 2));
+  float beta = acos((pow(L_ARM1, 2) + pow(L_ARM2, 2) - pow(r, 2) - pow(posz, 2)) / (2 * L_ARM1 * L_ARM2));
 
+  float tau = acos(r / lg);
+  float gamma = acos((pow(L_ARM2, 2) + pow(lg, 2) - pow(L_ARM1, 2)) / (2 * L_ARM2 * lg));
+  float alpha = M_PI - gamma - beta;
 
-    q0 = atan2(posx,posy);
+  // calculation of angles [rad]
+  q0 = atan2(posx, posy);
+  q1 = tau + alpha;
+  q2 = M_PI + beta;
 
-    float r = sqrt(pow(posx,2) + pow(posy,2));
+  // conversion to degrees with value 0 in field 5 & introduction of transmision factor for ellbow and shoulder
+  q0 = q0 * (180.0 / M_PI) - 90.0;
+  q1 = 1.31 * (q1 * (180.0 / M_PI) - 50.89);
+  q2 = 0.43 * (q2 * (180.0 / M_PI) - 284.4);
 
-    float lg = sqrt(pow(posz,2) + pow(r,2));
+  // adding offset of encoders
+  q0 = q0 + 163.0;
+  q1 = q1 + 55.8;
+  q2 = q2 + 155.6;
 
-    float beta = acos((pow(L_ARM1,2) + pow(L_ARM2,2) - pow(r,2) - pow(posz,2))/(2*L_ARM1*L_ARM2));
+  // creation of return vector
+  angleCin = {q0, q1, q2};
 
-    //q2 = M_PI - beta;
-    q2 = M_PI + beta;
-
-    float tau = acos(r/lg);
-
-    float gamma = acos((pow(L_ARM2,2) + pow(lg,2) - pow(L_ARM1,2))/(2*L_ARM2*lg));
-
-    float alpha = M_PI - gamma - beta;
-
-    q1 = tau + alpha;
-
-    // conversion to degrees
-    q0 = q0*(180.0/M_PI) -90.0;
-    q1 = 1.31 * (q1*(180.0/M_PI) - 50.89);
-    q2 = 0.43 * (q2*(180.0/M_PI) - 284.4);
-
-    // conversion to degrees
-    q0 = q0 + 163.0;
-    q1 = q1 + 55.8;
-    q2 = q2 + 155.6;
-
-    angleCin = {q0, q1, q2};
-
-    return angleCin;
+  return angleCin;
 }
