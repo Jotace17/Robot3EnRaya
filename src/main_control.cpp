@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <ESP32Servo.h>
 
 // #include "../lib/PMEC_E2_Control.h"
 
@@ -31,6 +32,14 @@
 #define PIN_MOSI 11 // 35 // 11 for SPI3
 
 #define N_MOTORS 3 // 35 // 11 for SPI3
+
+//definition of constants Servo
+// definition of constants
+#define GRIPPER_PIN 42              //definition of pin used to connect servomotor of gripper to ESP
+
+#define GRIPPER_OPEN 175              //definition of servoangle when gripper completely open
+#define GRIPPER_CLOSE_POS 50        //definition of servoangle when gripper closed to position to grip game piece
+#define GRIPPER_CLOSE_COMP 0      //definition of servoangle when gripper completely closed 
 
 // definition of constants for cinematics functions
 #define L_ARM1 300
@@ -72,10 +81,14 @@ float _oldAngle_m3 = 0;
 float _newRef_m1;
 float _newRef_m2;
 float _newRef_m3;
+float _newRef_s1;
 
-bool m1 = 1;
-bool m2 = 1;
-bool m3 = 1;
+bool m1 = 0;
+bool m2 = 0;
+bool m3 = 0;
+bool s1 = 1;
+
+Servo _servoGripper;
 
 const float _dt = 0.01; // 10ms
 
@@ -90,11 +103,17 @@ float ControlPiM2(float, float, float, float); // adaptive P control for arm/sho
 float ControlPiM3(float, float);               // Pi control for forearm/ellbow
 float SetDutyDeadZone(int motor, float ducy);
 vector<float> KinetInver(const float posx, const float posy, const float posz);
+void ConfServo();
+void OpenGripper();                       // function opening the gripper 
+void CloseGripper(int gripperPosition);   // function closing the gripper 
+int GetGripperState();                    // function to read out state of the gripper
 
 void setup()
 {
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  Serial.begin(115200);
+
+  ConfServo();
 
   _enc = new AlMar::Esp32::EncoderATM203_Spi2(cs_pins, N_MOTORS, PIN_MOSI, PIN_MISO, PIN_SCLK);
 
@@ -134,6 +153,7 @@ void loop()
     float allowedError = 1.0; // variable to define allowed error of control
     float allowedErrorM1 = 1.0;
     vector<float> q;
+    int gripperState = 0;
     // vector<float> Pos = {380,0,145};  // position 5 of board, 130mm for height of gripper
     // vector<float> Pos = {419.25,-39.25,145}; //position 9
     // vector<float> Pos = {340.75,39.25,145}; //1
@@ -152,12 +172,16 @@ void loop()
     /* call of inverse cinematics to calculate reference angles for caluclated point */
     q = KinetInver(Pos[0], Pos[1], Pos[2]);
 
+    /* read servo state */
+    gripperState = GetGripperState();
+
     /* only for debugging purposes */
     Serial.printf(">angulo m1: %.2f\n", (q[0]));
     Serial.printf(">angulo m2: %.2f\n", (q[1]));
     Serial.printf(">angulo m3: %.2f\n", (q[2]));
+    Serial.printf(">ServoState: %i\n", gripperState);
     /* */
-
+    //OpenGripper();
     if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2) // control loop for shoulder motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
@@ -245,6 +269,13 @@ void loop()
         GetReference(angles);
         _iOld = 0;
       }
+
+    }
+    if (s1)
+    {
+      int servoPos = _servoGripper.read();
+      Serial.printf(">ServoPos Angle: %i \n", servoPos);
+      CloseGripper(_newRef_s1);
     }
 
     /* set flag to false until timer/interrupt sets it to true again */
@@ -300,6 +331,10 @@ float GetReference(float *angles)
     else if (motorIndex == "m1")
     {
       _newRef_m1 = refAngle;
+    }
+    else if (motorIndex == "s1")
+    {
+      _newRef_s1 = refAngle;
     }
   }
 
@@ -503,4 +538,44 @@ vector<float> KinetInver(const float posx, const float posy, const float posz)
   angleCin = {q0, q1, q2};
 
   return angleCin;
+}
+
+void ConfServo()
+{
+  ESP32PWM::allocateTimer(1);
+  _servoGripper.setPeriodHertz(50);
+  _servoGripper.attach(GRIPPER_PIN);
+}
+// function opening the gripper 
+void OpenGripper()    
+{
+  _servoGripper.write(GRIPPER_OPEN);
+}
+
+// function closing the gripper 
+void CloseGripper(int gripperPosition)
+{
+  _servoGripper.write(gripperPosition);
+}
+
+// function to read out state of the gripper
+int GetGripperState()
+{      
+  //definition of local variables   
+  int servoPos = 200;                               // servo angle: can take angles between 0 and 180 degrees, therefore 200 invalid
+  int servoState = 0;                               // servo state: 0 - invalid, 1 - open, 2 - closed to position, 3 - closed completely
+
+  servoPos = _servoGripper.read();                  // reading out the angle of the servomotor
+  switch (servoPos + 1) {                           // clasification of the state based on the angle
+    case GRIPPER_OPEN ... (GRIPPER_OPEN + 5):
+      servoState = 1;
+      break;
+    case (GRIPPER_CLOSE_POS - 5) ... (GRIPPER_CLOSE_POS + 5):
+      servoState = 2;
+      break;
+    case (GRIPPER_CLOSE_COMP - 10) ... GRIPPER_CLOSE_COMP:
+      servoState = 3;
+      break;
+  }
+  return servoState;
 }
