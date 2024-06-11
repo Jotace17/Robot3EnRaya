@@ -34,6 +34,34 @@ void Game::CreateBoard()
     //showBoard();
 }
 
+void Game::updateBoard(String boardLecture)
+{
+    String converted = boardLecture;
+
+    for (char& ch : converted) {
+        if (ch == '0') {
+            ch = ' ';
+        } else if (ch == '1') {
+            ch = 'O';
+        } else if (ch == '2') {
+            ch = 'X';
+        }
+    }
+    int index = 0;
+    int temp_count = 0;
+    for (int i = 0; i < Dimension; i++) {
+        for (int j = 0; j < Dimension; j++) {
+            gameboard[i][j] = converted[index];
+            if (converted[index] != ' ')
+            {
+                temp_count += 1;
+            }
+            index++;
+        }
+    }
+    count = temp_count;
+}
+
 void Game::showBoard()
 {
     Serial.printf("\n\n");

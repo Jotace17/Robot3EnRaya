@@ -46,6 +46,9 @@ public:
     // showBoard() function
     void showBoard();
 
+    //updateBoard() function
+    void updateBoard(String boardLecture);
+
     // PlayTurn function with player object as parameter
     int PlayerTurn(Player& player);
 
