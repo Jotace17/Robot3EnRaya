@@ -42,8 +42,8 @@
 #define GRIPPER_CLOSE_COMP 0      //definition of servoangle when gripper completely closed 
 
 // definition of constants for cinematics functions
-#define L_ARM1 300
-#define L_ARM2 210
+#define L_ARM1 210
+#define L_ARM2 300
 
 #define X_A 0
 #define Y_A 0
@@ -85,7 +85,7 @@ float _newRef_s1;
 
 bool m1 = 1;
 bool m2 = 1;
-bool m3 = 2;
+bool m3 = 1;
 bool s1 = 1;
 
 Servo _servoGripper;
@@ -108,6 +108,8 @@ void ConfServo();
 void OpenGripper();                       // function opening the gripper 
 void CloseGripper(int gripperPosition);   // function closing the gripper 
 int GetGripperState();                    // function to read out state of the gripper
+float ConvAngles(float *angles);
+float ReConvAngles(float *angles, float x);
 
 void setup()
 {
@@ -128,9 +130,9 @@ void setup()
   _m3->begin();
 
   /* set initial reference values */
-  _newRef_m1 = 167; // first reference for motor 2 - limits ca. 30° to 100°
-  _newRef_m2 = 94;  // first reference for motor 2 - limits ca. 30° to 100°
-  _newRef_m3 = 188; // first reference for motor 3 - limits ca. 145 - 190°
+  _newRef_m1 = 162; // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m2 = 90;  // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m3 = 185; // first reference for motor 3 - limits ca. 145 - 190°
 
   /* timer initialization*/
   timer = timerBegin(0, 80, true);
@@ -155,7 +157,7 @@ void loop()
     float allowedErrorM1 = 0.3;
     vector<float> q;
     int gripperState = 0;
-    vector<float> Pos = {0,380,145};  // position 5 of board, 130mm for height of gripper
+    //vector<float> Pos = {0,380,145};  // position 5 of board, 130mm for height of gripper
     // vector<float> Pos = {419.25,-39.25,145}; //position 9
     // vector<float> Pos = {340.75,39.25,145}; //1
     // vector<float> Pos = {380,-39.25,145}; //6
@@ -164,13 +166,15 @@ void loop()
     startTime = millis();
     GetAngle(angles); // read all three angles from the encoders
     /* protection against loose encoder cables */
-    if (((angles[0]>280.0)||(angles[0]<50))||((angles[1]>130.0)||(angles[1]<20))||((angles[2]>240.0)||(angles[2]<100.0)))
+    if (((angles[0]>280.0)||(angles[0]<50))||((angles[1]>230.0)||(angles[1]<20))||((angles[2]>250.0)||(angles[2]<100.0)))
     {
       _m1->SetDuty(0);
       _m2->SetDuty(0);
       _m3->SetDuty(0);
     }
-    //vector<float> Pos = KinetDir(angles[0], angles[1], angles[2]);
+    float angleForarm =  ConvAngles(angles);
+    Serial.printf("> Angulo Antebrazo conv: %f\n",angleForarm);
+    vector<float> Pos = KinetDir(angles[0], angles[1], angleForarm);
     /* only for debugging purposes */
     Serial.printf(">A currentAngle m1: %.2f\n", (angles[0]));
     Serial.printf(">A currentAngle m2: %.2f\n", (angles[1]));
@@ -193,7 +197,7 @@ void loop()
     Serial.printf(">ServoState: %i\n", gripperState);
     /* */
     //OpenGripper();
-    if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2 && (_newRef_m2 < 100.0) && (_newRef_m2 > 35.0)) // control loop for shoulder motor if angle difference is > allowed error
+    if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2 && (_newRef_m2 < 230.0) && (_newRef_m2 > 35.0)) // control loop for shoulder motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
       float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef_m2, angles[1], _oldAngle_m2);
@@ -205,8 +209,8 @@ void loop()
 
       /* only for debugging purposes */
       // Serial.printf(">Current Angle m2: %f\n", angles[1]);
-      // Serial.printf(">ducy m2: %.2f \n", ducy_m2);
-      // Serial.printf("_newRef m2: %f \n", _newRef_m2);
+      Serial.printf(">ducy m2: %.2f \n", ducy_m2);
+      Serial.printf(">_newRef m2: %f \n", _newRef_m2);
       // Serial.printf(">Limitated DuCy M2: %f \n", ducyLimM2);
       /* */
     }
@@ -216,7 +220,7 @@ void loop()
       _m2->SetDuty(0);
       GetReference(angles);
     }
-    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3 && (_newRef_m3 < 190.0) && (_newRef_m3 > 140.0)) // control loop for ellbow motor if angle difference is > allowed error
+    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3 && (_newRef_m3 < 240.0) && (_newRef_m3 > 101.0)) // control loop for ellbow motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
       float ducy_m3 = ControlPiM3(_newRef_m3, angles[2]);
@@ -230,8 +234,8 @@ void loop()
       float refdif = _newRef_m3 - angles[2];
       // Serial.printf(">currentAngle m3: %f \n", angles[2]);
       // Serial.printf(">refDif m3: %f\n", refdif);
-      // Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
-      // Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
+      Serial.printf(">ducy_m3: %.2f \n", ducy_m3);
+      Serial.printf(">_newRef_m3: %f \n", _newRef_m3);
       // Serial.printf(">Limitated DuCy M3: %f \n", ducyLimM3);
       /* */
     }
@@ -246,11 +250,6 @@ void loop()
 
     if (m1)
     {
-      /* only for debugging purposes */
-      float refdif = _newRef_m1 - angles[0];
-      // Serial.printf(">refDif m1: %.2f\n", refdif);
-      /* */
-
       if (abs(_newRef_m1 - angles[0]) > allowedErrorM1 && (_newRef_m1 > 150.0) && (_newRef_m1 < 185.0)) // control loop if angle difference is > allowed error
       {
         /* only for debugging purposes */
@@ -262,15 +261,10 @@ void loop()
         _oldAngle_m1 = angles[0]; // update value of old angle
 
         /* only for debugging purposes */
-        // Serial.printf(">Current Angle deg m1: %f\n", angles[0]);
-        // Serial.printf(">Previous Angle deg m1: %f\n", _oldAngle_m1);
         Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
         // Serial.printf(">_newRef_m1: %f \n", _newRef_m1);
 
-        // float ducyLimM1 = SetDutyDeadZone(1, ducy_m1);  // limitation already in control
         _m1->SetDuty(ducy_m1);
-
-        // Serial.printf(">Ducylim M1: %f \n", ducyLimM1);
       }
       else
       {
@@ -294,8 +288,10 @@ void loop()
     endTime = millis();
     runTime = endTime - startTime;
     Serial.printf(">Program Runtime: %lu \n", runTime);
+    Serial.printf(">reConvAng: %f \n",ReConvAngles(angles, q[2]));
   }
-}
+  
+} // End Loop
 
 /* function definitions */
 void GetAngle(float *angles)
@@ -497,24 +493,18 @@ vector<float> KinetDir(float q1, float q2, float q3)
   vector<float> Pos;
   float r;
   float x, y, z;
-  q1 = (q1-167.0)*M_PI/180.0;
-  q2 = (q2 -55.8)*M_PI/180.0;
-  q3 = -((q3 - 155.6)*M_PI/180.0);
+  q1 = (q1-162.0)*M_PI/180.0;
+  q2 = (q2)*M_PI/180.0;
+  q3 = (q3)*M_PI/180.0;
   float lPinza = 130.0;
 
-  r = L_ARM1 * cos(q2) + L_ARM2 * cos(q3 - q2);
-
-  //cout << "La distancia r es : " << r << endl;
+  r = L_ARM1 * cos(q2) + L_ARM2 * cos(-q3 + q2);
 
   x = r * sin(q1);
   y = r * cos(q1);
-  z = (L_ARM1 * sin(q2) + L_ARM2 * sin(q2 - q3))-lPinza;
+  z = (L_ARM1 * sin(q2) + L_ARM2 * sin(q2 - q3));
 
   Pos = {x, y, z};
-
-  /*cout << "El valor de x es : " << x << endl;
-  cout << "El valor de y es : " << y << endl;
-  cout << "El valor de z es : " << z << endl;*/
 
   return Pos;
 } // Fin de la funcion Kinet_Dir()
@@ -531,28 +521,41 @@ vector<float> KinetInver(const float posx, const float posy, const float posz)
   float beta = acos((pow(L_ARM1, 2) + pow(L_ARM2, 2) - pow(r, 2) - pow(posz, 2)) / (2 * L_ARM1 * L_ARM2));
 
   float tau = acos(r / lg);
-  float gamma = acos((pow(L_ARM2, 2) + pow(lg, 2) - pow(L_ARM1, 2)) / (2 * L_ARM2 * lg));
+  float gamma = acos((pow(L_ARM2,2) + pow(lg,2) - pow(L_ARM1,2))/(2*L_ARM2*lg));
   float alpha = M_PI - gamma - beta;
 
   // calculation of angles [rad]
   q0 = atan2(posx, posy);
   q1 = tau + alpha;
-  q2 = M_PI + beta;
+  q2 = M_PI - beta;
 
-  // conversion to degrees with value 0 in field 5 & introduction of transmision factor for ellbow and shoulder
-  q0 = q0 * (180.0 / M_PI);
-  q1 = 1.31 * (q1 * (180.0 / M_PI) - 50.89);
-  q2 = 0.43 * (q2 * (180.0 / M_PI) - 284.4);
+  // Return in grades
+  // If you dont want grades, comment the next lines
 
-  // adding offset of encoders
-  q0 = q0 + 167.0;
-  q1 = q1 + 55.8;
-  q2 = q2 + 155.6;
+  q0 = q0*180/M_PI;
+  q1 = q1*180/M_PI;
+  q2 = q2*180/M_PI;
 
   // creation of return vector
   angleCin = {q0, q1, q2};
 
   return angleCin;
+}
+
+float ConvAngles(float *angles)
+{
+    float error = 10.0;
+    float q1Conv = 180.0 - angles[2] + angles[1] + error;
+
+    return q1Conv;
+}
+
+float ReConvAngles(float *angles, float x)
+{
+  float error = 10.0;
+  float Conv = 180 - x + angles[1] + error;
+
+  return Conv;
 }
 
 void ConfServo()
