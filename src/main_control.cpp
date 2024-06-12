@@ -343,10 +343,14 @@ float GetReference(float *angles)
     {
       _newRef_s1 = refAngle;
     }
+
   }
 
   return 0;
 }
+
+
+
 
 float ControlPiM2(float ref, float refOld, float angle, float angleOld)
 {
@@ -597,3 +601,4 @@ int GetGripperState()
   }
   return servoState;
 }
+
