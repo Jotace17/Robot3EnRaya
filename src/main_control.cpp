@@ -37,7 +37,7 @@
 // definition of constants
 #define GRIPPER_PIN 42              //definition of pin used to connect servomotor of gripper to ESP
 
-#define GRIPPER_OPEN 175              //definition of servoangle when gripper completely open
+#define GRIPPER_OPEN 178              //definition of servoangle when gripper completely open
 #define GRIPPER_CLOSE_POS 50        //definition of servoangle when gripper closed to position to grip game piece
 #define GRIPPER_CLOSE_COMP 0      //definition of servoangle when gripper completely closed 
 
@@ -83,9 +83,9 @@ float _newRef_m2;
 float _newRef_m3;
 float _newRef_s1;
 
-bool m1 = 0;
-bool m2 = 0;
-bool m3 = 0;
+bool m1 = 1;
+bool m2 = 1;
+bool m3 = 2;
 bool s1 = 1;
 
 Servo _servoGripper;
@@ -103,6 +103,7 @@ float ControlPiM2(float, float, float, float); // adaptive P control for arm/sho
 float ControlPiM3(float, float);               // Pi control for forearm/ellbow
 float SetDutyDeadZone(int motor, float ducy);
 vector<float> KinetInver(const float posx, const float posy, const float posz);
+vector<float> KinetDir(float q1, float q2, float q3);
 void ConfServo();
 void OpenGripper();                       // function opening the gripper 
 void CloseGripper(int gripperPosition);   // function closing the gripper 
@@ -127,7 +128,7 @@ void setup()
   _m3->begin();
 
   /* set initial reference values */
-  _newRef_m1 = 172; // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m1 = 167; // first reference for motor 2 - limits ca. 30° to 100°
   _newRef_m2 = 94;  // first reference for motor 2 - limits ca. 30° to 100°
   _newRef_m3 = 188; // first reference for motor 3 - limits ca. 145 - 190°
 
@@ -150,24 +151,34 @@ void loop()
     float ducy_m2;            // variable to store duty cycle for motor 2 (shoulder)
     float ducy_m3;            // variable to store duty cycle for motor 3 (ellbow)
     float refPos;             // variable for reference angle of control
-    float allowedError = 1.0; // variable to define allowed error of control
-    float allowedErrorM1 = 1.0;
+    float allowedError = 0.8; // variable to define allowed error of control
+    float allowedErrorM1 = 0.3;
     vector<float> q;
     int gripperState = 0;
-    // vector<float> Pos = {380,0,145};  // position 5 of board, 130mm for height of gripper
+    vector<float> Pos = {0,380,145};  // position 5 of board, 130mm for height of gripper
     // vector<float> Pos = {419.25,-39.25,145}; //position 9
     // vector<float> Pos = {340.75,39.25,145}; //1
     // vector<float> Pos = {380,-39.25,145}; //6
-    vector<float> Pos = {419.25, 0, 145}; // 8
+    //vector<float> Pos = {419.25, 0, 145}; // 8
     // vector<float> Pos = {340.75,0,145}; //2
     startTime = millis();
     GetAngle(angles); // read all three angles from the encoders
-
+    /* protection against loose encoder cables */
+    if (((angles[0]>280.0)||(angles[0]<50))||((angles[1]>130.0)||(angles[1]<20))||((angles[2]>240.0)||(angles[2]<100.0)))
+    {
+      _m1->SetDuty(0);
+      _m2->SetDuty(0);
+      _m3->SetDuty(0);
+    }
+    //vector<float> Pos = KinetDir(angles[0], angles[1], angles[2]);
     /* only for debugging purposes */
     Serial.printf(">A currentAngle m1: %.2f\n", (angles[0]));
     Serial.printf(">A currentAngle m2: %.2f\n", (angles[1]));
     Serial.printf(">A currentAngle m3: %.2f\n", (angles[2]));
     /* */
+    Serial.printf(">Pos CinDir x: %.2f\n", (Pos[0]));
+    Serial.printf(">Pos CinDir y: %.2f\n", (Pos[1]));
+    Serial.printf(">Pos CinDir z: %.2f\n", (Pos[2]));
 
     /* call of inverse cinematics to calculate reference angles for caluclated point */
     q = KinetInver(Pos[0], Pos[1], Pos[2]);
@@ -176,13 +187,13 @@ void loop()
     gripperState = GetGripperState();
 
     /* only for debugging purposes */
-    Serial.printf(">angulo m1: %.2f\n", (q[0]));
-    Serial.printf(">angulo m2: %.2f\n", (q[1]));
-    Serial.printf(">angulo m3: %.2f\n", (q[2]));
+    Serial.printf(">angulo CinInv m1: %.2f\n", (q[0]));
+    Serial.printf(">angulo CinInv m2: %.2f\n", (q[1]));
+    Serial.printf(">angulo CinInv m3: %.2f\n", (q[2]));
     Serial.printf(">ServoState: %i\n", gripperState);
     /* */
     //OpenGripper();
-    if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2) // control loop for shoulder motor if angle difference is > allowed error
+    if ((abs(_newRef_m2 - angles[1]) > allowedError) && m2 && (_newRef_m2 < 100.0) && (_newRef_m2 > 35.0)) // control loop for shoulder motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
       float ducy_m2 = ControlPiM2(_newRef_m2, _oldRef_m2, angles[1], _oldAngle_m2);
@@ -205,7 +216,7 @@ void loop()
       _m2->SetDuty(0);
       GetReference(angles);
     }
-    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3) // control loop for ellbow motor if angle difference is > allowed error
+    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3 && (_newRef_m3 < 190.0) && (_newRef_m3 > 140.0)) // control loop for ellbow motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
       float ducy_m3 = ControlPiM3(_newRef_m3, angles[2]);
@@ -240,7 +251,7 @@ void loop()
       // Serial.printf(">refDif m1: %.2f\n", refdif);
       /* */
 
-      if (abs(_newRef_m1 - angles[0]) > allowedErrorM1) // control loop if angle difference is > allowed error
+      if (abs(_newRef_m1 - angles[0]) > allowedErrorM1 && (_newRef_m1 > 150.0) && (_newRef_m1 < 185.0)) // control loop if angle difference is > allowed error
       {
         /* only for debugging purposes */
         float refdif = _newRef_m1 - angles[0];
@@ -253,7 +264,7 @@ void loop()
         /* only for debugging purposes */
         // Serial.printf(">Current Angle deg m1: %f\n", angles[0]);
         // Serial.printf(">Previous Angle deg m1: %f\n", _oldAngle_m1);
-        // Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
+        Serial.printf(">ducy_m1: %.2f \n", ducy_m1);
         // Serial.printf(">_newRef_m1: %f \n", _newRef_m1);
 
         // float ducyLimM1 = SetDutyDeadZone(1, ducy_m1);  // limitation already in control
@@ -271,7 +282,7 @@ void loop()
       }
 
     }
-    if (s1)
+    if (s1) // function to test servo
     {
       int servoPos = _servoGripper.read();
       Serial.printf(">ServoPos Angle: %i \n", servoPos);
@@ -480,26 +491,30 @@ float SetDutyDeadZone(int motor, float ducy) /* limitation of duty cycle and imp
   return ducyLim;
 }
 
-vector<float> KinetDir(const float q1, const float q2, const float q3)
+vector<float> KinetDir(float q1, float q2, float q3)
 {
   // definition of local variables
   vector<float> Pos;
   float r;
   float x, y, z;
+  q1 = (q1-167.0)*M_PI/180.0;
+  q2 = (q2 -55.8)*M_PI/180.0;
+  q3 = -((q3 - 155.6)*M_PI/180.0);
+  float lPinza = 130.0;
 
   r = L_ARM1 * cos(q2) + L_ARM2 * cos(q3 - q2);
 
-  cout << "La distancia r es : " << r << endl;
+  //cout << "La distancia r es : " << r << endl;
 
   x = r * sin(q1);
   y = r * cos(q1);
-  z = L_ARM1 * sin(q2) + L_ARM2 * sin(q2 - q3);
+  z = (L_ARM1 * sin(q2) + L_ARM2 * sin(q2 - q3))-lPinza;
 
   Pos = {x, y, z};
 
-  cout << "El valor de x es : " << x << endl;
+  /*cout << "El valor de x es : " << x << endl;
   cout << "El valor de y es : " << y << endl;
-  cout << "El valor de z es : " << z << endl;
+  cout << "El valor de z es : " << z << endl;*/
 
   return Pos;
 } // Fin de la funcion Kinet_Dir()
@@ -525,12 +540,12 @@ vector<float> KinetInver(const float posx, const float posy, const float posz)
   q2 = M_PI + beta;
 
   // conversion to degrees with value 0 in field 5 & introduction of transmision factor for ellbow and shoulder
-  q0 = q0 * (180.0 / M_PI) - 90.0;
+  q0 = q0 * (180.0 / M_PI);
   q1 = 1.31 * (q1 * (180.0 / M_PI) - 50.89);
   q2 = 0.43 * (q2 * (180.0 / M_PI) - 284.4);
 
   // adding offset of encoders
-  q0 = q0 + 163.0;
+  q0 = q0 + 167.0;
   q1 = q1 + 55.8;
   q2 = q2 + 155.6;
 
