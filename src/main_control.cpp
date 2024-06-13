@@ -10,7 +10,7 @@
 // #include "../lib/PMEC_E2_Control.h"
 
 // definition of pins
-#define PIN_M1_EN 7
+#define PIN_M1_EN     7
 #define PIN_M1_IN1 15
 #define PIN_M1_IN2 16
 
@@ -83,9 +83,9 @@ float _newRef_m2;
 float _newRef_m3;
 float _newRef_s1;
 
-bool m1 = 1;
-bool m2 = 0;
-bool m3 = 0;
+bool m1 = 0;
+bool m2 = 1;
+bool m3 = 1;
 bool s1 = 0;
 
 Servo _servoGripper;
@@ -110,7 +110,7 @@ void CloseGripper(int gripperPosition);   // function closing the gripper
 int GetGripperState();                    // function to read out state of the gripper
 float ConvAngles(float *angles);
 float ReConvAngles(float *angles, float x);
-void Trayectoria(float pos_xf, float pos_yf, float pos_zf);
+int Trayectoria(float pos_xf, float pos_yf, float pos_zf);
 
 void setup()
 {
@@ -133,7 +133,7 @@ void setup()
   /* set initial reference values */
   _newRef_m1 = 126; // first reference for motor 2 - limits ca. 30° to 100°
   _newRef_m2 = 90;  // first reference for motor 2 - limits ca. 30° to 100°
-  _newRef_m3 = 185; // first reference for motor 3 - limits ca. 145 - 190°
+  _newRef_m3 = 195; // first reference for motor 3 - limits ca. 145 - 190°
 
   /* timer initialization*/
   timer = timerBegin(0, 80, true);
@@ -154,7 +154,7 @@ void loop()
     float ducy_m2;            // variable to store duty cycle for motor 2 (shoulder)
     float ducy_m3;            // variable to store duty cycle for motor 3 (ellbow)
     float refPos;             // variable for reference angle of control
-    float allowedError = 0.8; // variable to define allowed error of control
+    float allowedError = 0.8; // variable to define allowed error of control <----------------
     float allowedErrorM1 = 0.3;
     vector<float> q;
     int gripperState = 0;
@@ -166,6 +166,8 @@ void loop()
     // vector<float> Pos = {340.75,0,145}; //2
     startTime = millis();
     GetAngle(angles); // read all three angles from the encoders
+
+
     /* protection against loose encoder cables */
     if (((angles[0]>280.0)||(angles[0]<50))||((angles[1]>230.0)||(angles[1]<20))||((angles[2]>250.0)||(angles[2]<100.0)))
     {
@@ -186,8 +188,8 @@ void loop()
     Serial.printf(">Pos CinDir z: %.2f\n", (Pos[2]));
 
     /* call of inverse cinematics to calculate reference angles for caluclated point */
-    q = KinetInver(Pos[0], Pos[1], Pos[2]);
-
+    //q = KinetInver(0, 336.47, 206.81) ;
+    q = KinetInver(0, 335.32, 180.66) ;
     /* read servo state */
     gripperState = GetGripperState();
 
@@ -221,7 +223,7 @@ void loop()
       _m2->SetDuty(0);
       GetReference(angles);
     }
-    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3 && (_newRef_m3 < 240.0) && (_newRef_m3 > 101.0)) // control loop for ellbow motor if angle difference is > allowed error
+    if ((abs(_newRef_m3 - angles[2]) > allowedError) && m3 && (_newRef_m3 < 205.0) && (_newRef_m3 > 101.0)) // control loop for ellbow motor if angle difference is > allowed error
     {
       /* calculation of duty cycle by control */
       float ducy_m3 = ControlPiM3(_newRef_m3, angles[2]);
@@ -347,14 +349,17 @@ float GetReference(float *angles)
     {
       _newRef_s1 = refAngle;
     }
-    else if (motorIndex == "Tb")
+    if (motorIndex == "Tb")
     {
       Serial.printf("refPosition trimmed %s \n", refPosition);
       /*float x = refPosition.substring(3, 6).toFloat();
       float y = refPosition.substring(9, 13).toFloat();
       float z = refPosition.substring(15, 19).toFloat();*/
 
-      Trayectoria(040,305,0);
+      
+
+      int a = Trayectoria(0.0, 419.25, 0.0);
+
     }
 
   }
@@ -362,9 +367,6 @@ float GetReference(float *angles)
 
   return 0;
 }
-
-
-
 
 float ControlPiM2(float ref, float refOld, float angle, float angleOld)
 {
@@ -375,7 +377,7 @@ float ControlPiM2(float ref, float refOld, float angle, float angleOld)
   {
     kP = 5 + (0.04 * (90 - angle)); // adaptive proportional gain - motor forearm
   }
-  Serial.printf("kP: %f \n", kP);
+  Serial.printf(">kP: %f \n", kP);
   // calculate proportional part
   float propPart = kP * ((ref - angle) / 360);
 
@@ -511,11 +513,11 @@ vector<float> KinetDir(float q1, float q2, float q3)
   vector<float> Pos;
   float r;
   float x, y, z;
-  q1 = (q1-162.0)*M_PI/180.0;
+  //q1 = (q1-162.0)*M_PI/180.0;
+  q1 = q1*M_PI/180.0;
   q2 = (q2)*M_PI/180.0;
   q3 = (q3)*M_PI/180.0;
   float lPinza = 130.0;
-
   r = L_ARM1 * cos(q2) + L_ARM2 * cos(-q3 + q2);
 
   x = r * sin(q1);
@@ -562,15 +564,15 @@ vector<float> KinetInver(const float posx, const float posy, const float posz)
 
 float ConvAngles(float *angles)
 {
-    float error = 10.0;
-    float q1Conv = 180.0 - angles[2] + angles[1] + error;
+    float error = 25.0;
+    float q2Conv = 180.0 - angles[2] + angles[1] + error;
 
-    return q1Conv;
+    return q2Conv;
 }
 
 float ReConvAngles(float *angles, float x)
 {
-  float error = 10.0;
+  float error = 25.0;
   float Conv = 180 - x + angles[1] + error;
 
   return Conv;
@@ -616,16 +618,21 @@ int GetGripperState()
   return servoState;
 }
 
-void Trayectoria(float pos_xf, float pos_yf, float pos_zf)
+int Trayectoria(float pos_xf, float pos_yf, float pos_zf)
 {
     float q[3];
     GetAngle(q);
     // Medir angulos iniciales
-    float q0 = q[0]-126.0;  
+    float q0 = q[0]-126.0;  //xabi: lectura encoder base menos offset
     float q1 = q[1];
-    float q2 = ConvAngles(&q[2]);
+    float q2 = q[2];    // lectura encoder motor 3, antebrazo
+    float aux = q2;     // se guarda en aux la lectura del encoder del antebrazo
+    
+    q2 = ConvAngles(q);   // se guarda en q2 los angulo reales en grados
     // Cinematica directa para posiciones iniciales
-    vector<float> pos_i = KinetDir(q0, q1, q2);
+    vector<float> pos_i = KinetDir(q0, q1, q2); // degrees
+
+    //q2 = aux;     // lectura que se habia guardado del encoder 
 
     // Angulos Deseados
     vector<float> ang_f = KinetInver(pos_xf, pos_yf, pos_zf);
@@ -665,58 +672,76 @@ void Trayectoria(float pos_xf, float pos_yf, float pos_zf)
     }
 
     //Move_Robot(ang_f[0]+162.0);
-    _newRef_m1 = q0_aux+126.0;
+    _newRef_m1 = ang_f[0]+126.0;
     cout << "_newRef m1"<< _newRef_m1 << endl;
 
     cout << "Se ha llegado al punto de la base 0" << endl;
-/*
+
+    Serial.printf(">El angulo destino es %f\n",q2);
     // Mover eslabones
     float q1_aux = q1;
 
-    int steps_q1 = abs(ang_f[1] - q1)/(5*M_PI/180);
+    int steps_q1 = abs(ang_f[1] - q1)/(5);
 
     for (int i = 0; i<steps_q1; i++)
     {
         if(ang_f[1] < q1)
         {
             q1_aux = q1_aux - 5;
-            Move_Robot(q1_aux);
+            //Move_Robot(q1_aux);
+            _newRef_m2 = q1_aux;
+            cout << "_newRef m2"<< _newRef_m2 << endl;
         }
 
         else
         {
             q1_aux = q1_aux + 5;
-            Move_Robot(q1_aux);
+            //Move_Robot(q1_aux);
+            _newRef_m2 = q1_aux;
+            cout << "_newRef m2"<< _newRef_m2 << endl;
         }
     }
 
-    Move_Robot(ang_f[1]);
+    //Move_Robot(ang_f[1]);
+    _newRef_m2 = ang_f[1];
+    cout << "_newRef m2"<< _newRef_m2 << endl;
 
     cout << "Se ha llegado al punto del eslabón del brazo" << endl;
 
 
     float q2_aux = q2;
+  
+    int steps_q2 = abs(ang_f[2] - q2)/(5);
 
-
-
-    int steps_q2 = abs(ang_f[2] - q2)/(5*M_PI/180);
+    cout << "ang_f[2]: " << ang_f[2] << endl;
+    cout << "q2: " << q2 << endl;
+    cout << "aux: " << aux << endl;
 
     for (int i = 0; i<steps_q2; i++)
     {
         if(ang_f[2] < q2)
         {
             q2_aux = q2_aux - 5;
-            Move_Robot(q2_aux);
+            float q2_auxReconv = ReConvAngles(q, q2_aux);
+            //Move_Robot(q2_aux);
+            _newRef_m3 = q2_auxReconv;
+            cout << "_newRef m3: "<< _newRef_m3 << endl;
         }
 
         else
         {
             q2_aux = q2_aux + 5;
-            Move_Robot(q2_aux);
+            float q2_auxReconv = ReConvAngles(q, q2_aux);
+            //Move_Robot(q2_aux);
+            _newRef_m3 = q2_auxReconv;
+            cout << "_newRef m3: "<< _newRef_m3 << endl;
         }
     }
+    float q2_auxReconv = ReConvAngles(q, ang_f[2]);
+    _newRef_m3 = q2_auxReconv;
+    cout << "_newRef m3: "<< _newRef_m3 << endl;
 
-
-    cout << "Se ha llegado al punto del eslabón del antebrazo" << endl;*/
+    cout << "Se ha llegado al punto del eslabón del antebrazo" << endl;
+    return 1;
 
 }
