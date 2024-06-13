@@ -84,9 +84,9 @@ float _newRef_m3;
 float _newRef_s1;
 
 bool m1 = 1;
-bool m2 = 1;
-bool m3 = 1;
-bool s1 = 1;
+bool m2 = 0;
+bool m3 = 0;
+bool s1 = 0;
 
 Servo _servoGripper;
 
@@ -110,6 +110,7 @@ void CloseGripper(int gripperPosition);   // function closing the gripper
 int GetGripperState();                    // function to read out state of the gripper
 float ConvAngles(float *angles);
 float ReConvAngles(float *angles, float x);
+void Trayectoria(float pos_xf, float pos_yf, float pos_zf);
 
 void setup()
 {
@@ -130,7 +131,7 @@ void setup()
   _m3->begin();
 
   /* set initial reference values */
-  _newRef_m1 = 162; // first reference for motor 2 - limits ca. 30° to 100°
+  _newRef_m1 = 126; // first reference for motor 2 - limits ca. 30° to 100°
   _newRef_m2 = 90;  // first reference for motor 2 - limits ca. 30° to 100°
   _newRef_m3 = 185; // first reference for motor 3 - limits ca. 145 - 190°
 
@@ -250,7 +251,7 @@ void loop()
 
     if (m1)
     {
-      if (abs(_newRef_m1 - angles[0]) > allowedErrorM1 && (_newRef_m1 > 150.0) && (_newRef_m1 < 185.0)) // control loop if angle difference is > allowed error
+      if (abs(_newRef_m1 - angles[0]) > allowedErrorM1 && (_newRef_m1 > 120.0) && (_newRef_m1 < 195.0)) // control loop if angle difference is > allowed error
       {
         /* only for debugging purposes */
         float refdif = _newRef_m1 - angles[0];
@@ -324,9 +325,12 @@ float GetReference(float *angles)
   {
     /* Read the input position */
     refPosition = Serial.readString();
+    //cout << "refPosition untrimmed" << refPosition << endl;
+    Serial.printf("refPosition untrimmed %s \n", refPosition);
     refPosition.trim();
     String motorIndex = refPosition.substring(0, 2);
     float refAngle = refPosition.substring(3).toFloat();
+    Serial.printf("refAngle %f \n", refAngle);
     if ((motorIndex == "m3"))
     {
       _newRef_m3 = refAngle;
@@ -343,8 +347,18 @@ float GetReference(float *angles)
     {
       _newRef_s1 = refAngle;
     }
+    else if (motorIndex == "Tb")
+    {
+      Serial.printf("refPosition trimmed %s \n", refPosition);
+      /*float x = refPosition.substring(3, 6).toFloat();
+      float y = refPosition.substring(9, 13).toFloat();
+      float z = refPosition.substring(15, 19).toFloat();*/
+
+      Trayectoria(040,305,0);
+    }
 
   }
+
 
   return 0;
 }
@@ -602,3 +616,107 @@ int GetGripperState()
   return servoState;
 }
 
+void Trayectoria(float pos_xf, float pos_yf, float pos_zf)
+{
+    float q[3];
+    GetAngle(q);
+    // Medir angulos iniciales
+    float q0 = q[0]-126.0;  
+    float q1 = q[1];
+    float q2 = ConvAngles(&q[2]);
+    // Cinematica directa para posiciones iniciales
+    vector<float> pos_i = KinetDir(q0, q1, q2);
+
+    // Angulos Deseados
+    vector<float> ang_f = KinetInver(pos_xf, pos_yf, pos_zf);
+
+    float dato = q0;
+    float q0_aux = q0;
+    // Mover la base
+
+
+    cout << "-------------------------------------" << endl;
+    cout << ang_f[0] - q0 << endl;
+
+
+    int steps_q0 = abs(ang_f[0] - q0)/(5);
+
+    cout << steps_q0 << endl;
+
+
+    for (int i = 0; i<steps_q0; i++)
+    {
+        if(ang_f[0] < q0)
+        {
+            q0_aux = q0_aux - 5;
+            //Move_Robot(q0_aux+162.0);
+            _newRef_m1 = q0_aux+126.0;
+            cout << "_newRef m1"<< _newRef_m1 << endl;
+        }
+
+        else
+        {
+            q0_aux = q0_aux + 5;
+           // Move_Robot(q0_aux+162.0);
+            _newRef_m1 = q0_aux+126.0;
+            cout << "_newRef m1"<< _newRef_m1 << endl;
+        }
+
+    }
+
+    //Move_Robot(ang_f[0]+162.0);
+    _newRef_m1 = q0_aux+126.0;
+    cout << "_newRef m1"<< _newRef_m1 << endl;
+
+    cout << "Se ha llegado al punto de la base 0" << endl;
+/*
+    // Mover eslabones
+    float q1_aux = q1;
+
+    int steps_q1 = abs(ang_f[1] - q1)/(5*M_PI/180);
+
+    for (int i = 0; i<steps_q1; i++)
+    {
+        if(ang_f[1] < q1)
+        {
+            q1_aux = q1_aux - 5;
+            Move_Robot(q1_aux);
+        }
+
+        else
+        {
+            q1_aux = q1_aux + 5;
+            Move_Robot(q1_aux);
+        }
+    }
+
+    Move_Robot(ang_f[1]);
+
+    cout << "Se ha llegado al punto del eslabón del brazo" << endl;
+
+
+    float q2_aux = q2;
+
+
+
+    int steps_q2 = abs(ang_f[2] - q2)/(5*M_PI/180);
+
+    for (int i = 0; i<steps_q2; i++)
+    {
+        if(ang_f[2] < q2)
+        {
+            q2_aux = q2_aux - 5;
+            Move_Robot(q2_aux);
+        }
+
+        else
+        {
+            q2_aux = q2_aux + 5;
+            Move_Robot(q2_aux);
+        }
+    }
+
+
+    cout << "Se ha llegado al punto del eslabón del antebrazo" << endl;*/
+
+}
